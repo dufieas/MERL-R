@@ -1,0 +1,1850 @@
+---
+title: "Baseline long survey"
+author: "MERL Report"
+date: "2025-06-02"
+output: word_document
+toc: true
+---
+\pagebreak
+```{r include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,  
+  message = FALSE,  
+  warning = FALSE 
+  
+)
+```
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = FALSE,
+	message = FALSE,
+	warning = FALSE
+)
+library(httr)
+library(jsonlite)
+library(tidyverse)
+library(readxl)
+library(tidyr)
+library(dplyr)
+library(here)
+library(skimr)
+library(janitor)
+library(writexl)
+library(ggplot2)
+library(magick)
+library(knitr)
+```
+
+## Accessing data
+
+The data was exported from CommCare on 19/05/2025. A subset of the indicators was selected depending on the goal of the calculation and the indicators needed.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+Mangwana_Baseline_Survey <- read_excel("Mangwana - Baseline Survey.xlsx", 
+                                       sheet = "Forms")
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+Selected_Child_indicators <- Mangwana_Baseline_Survey %>% 
+  select(formid, form.Section_II_group.voc_tem_um_filho_entre_0_e_24_meses,form.Section_II_group.alguma_vez_qual__o_nome_da_criana_entre_0_e_24_meses_foi_amamentado, form.Section_II_group.llquidos_formula_infantil,form.Section_II_group.em_quanto_tempo_depois_do_nascimento_qual__o_nome_da_criana_entre_0_e_24_me, form.Section_II_group.leite_de_origem_animal_incluindo_lquido_ou_em_p,form.Section_II_group.achocolatado_como_milo_cremora_ou_leite_condensado,
+         form.Section_II_group.sumos_ou_sumos_em_p,`form.Section_II_group.refrescos_como_coca-cola_fanta_frozy_ou_fizz_ou_bebidas_energticas_como_o_r`, form.Section_II_group.ch_caf_ou_bebidas__base_de_plantas_ou_ervas, form.Section_II_group.sopa_ou_caldo, form.Section_II_group.iogurte, form.Section_II_group.arroz_po_massa_esparguete_xima_de_farinha_de_milho_processada_papas_de_fari,form.Section_II_group.brculos_espinafres_folhas_de_moringa_folhas_de_amaranto_ou_quiabo_de_folha,form.Section_II_group.camaro_voador_caracol_da_terra_trmita_ou_ishwa,
+         form.Section_II_group.xima_ou_papas_de_milho_no_processado_mexoeira_mapira_maaroca_po_integral_ou,form.Section_II_group.batata_batata_doce_branca_inhame_mandioca_xima_de_mandioca_ou_papas_de_mand,form.Section_II_group.feijo_comum_feijo_nhemba_ervilha_feijo_boer_feijo_jugo_feijo_soroco_ou_soja, form.Section_II_group.cenoura_abbora_ou_batata_doce_de_polpa_alaranjada,form.Section_II_group.couve_folhas_de_abobora_folhas_de_cacana_folhas_de_batata_doce_folha_de_fei, 
+         form.Section_II_group.tomate_repolho_quiabo_beringela_ou_cogumelos, form.Section_II_group.alface_pepino_feijo_verde_ou_pimento_verde, form.Section_II_group.manga_madura_papaia_madura_ou_maracuj, form.Section_II_group.laranja_ou_tangerinas,form.Section_II_group.bananas_melancia_abacate_lichia_caju_anans_ou_malambe, form.Section_II_group.ma_pra_goiaba_massala_ata_mapfilo_tintsiva_ou_mafurra, form.Section_II_group.bolos_bolinhos_bolachas_doces_argolas_fritas_bolas_de_berlim_ou_fiosso, 
+         form.Section_II_group.ovos, form.Section_II_group.queijo, form.Section_II_group.paloni_salsichas_ou_enchidos_como_chourio_linguia_rachel_russian_ou_vorse, form.Section_II_group.carne_de_vaca_carne_de_cabrito_carne_de_ovelha_gazela_ou_bufalo, form.Section_II_group.carne_de_porco_carne_de_ratazana_ou_coelho, form.Section_II_group.galinha_pato_peru_codorniz_ou_passarinhos, form.Section_II_group.peixe_fresco_ou_seco_camaro_fresco_ou_seco_caranguejo_lulas_ou_ameijoa, 
+         form.Section_II_group.amendoim_manteiga_de_amendoim_amendoim_modo_castanhas_de_caj_ou_sementes_de, form.Section_II_group.chips_pipocas_de_pacote_ou_niknaks, form.Section_II_group.massa_instantnea,form.Section_II_group.batatas_fritas_badjia_peixe_frito_ou_frango_frito,`form.Section_II_group.copy-1-of-leo_de_palma_vermelho`,form.Section_II_group.chupa_chupa_ou_doces_bombom_chocolate_sorvete_ou_gelinho,form.Section_II_group.leo_de_palma_vermelho) %>% 
+  
+  rename(have_child = form.Section_II_group.voc_tem_um_filho_entre_0_e_24_meses,
+         breastfed = form.Section_II_group.alguma_vez_qual__o_nome_da_criana_entre_0_e_24_meses_foi_amamentado,
+         early_breastfeed = form.Section_II_group.em_quanto_tempo_depois_do_nascimento_qual__o_nome_da_criana_entre_0_e_24_me,
+         infant_formula = form.Section_II_group.llquidos_formula_infantil, 
+         animal_milk = form.Section_II_group.leite_de_origem_animal_incluindo_lquido_ou_em_p,
+         chocolate_milk = form.Section_II_group.achocolatado_como_milo_cremora_ou_leite_condensado,
+         juices = form.Section_II_group.sumos_ou_sumos_em_p,
+         soft_drinks = `form.Section_II_group.refrescos_como_coca-cola_fanta_frozy_ou_fizz_ou_bebidas_energticas_como_o_r`, 
+         plant_base_drink = form.Section_II_group.ch_caf_ou_bebidas__base_de_plantas_ou_ervas, 
+         soups_broth = form.Section_II_group.sopa_ou_caldo, 
+         yoghurt = form.Section_II_group.iogurte, 
+         processed_porridge = form.Section_II_group.arroz_po_massa_esparguete_xima_de_farinha_de_milho_processada_papas_de_fari,
+         green_leafy_vegetables = form.Section_II_group.brculos_espinafres_folhas_de_moringa_folhas_de_amaranto_ou_quiabo_de_folha,#Broccoli, spinach, moringa leaves, amaranth leaves or okra leaves
+         shrimp_snails = form.Section_II_group.camaro_voador_caracol_da_terra_trmita_ou_ishwa,# Flying shrimp, land snail, termite or ishwa
+         unprocessed_porridge = form.Section_II_group.xima_ou_papas_de_milho_no_processado_mexoeira_mapira_maaroca_po_integral_ou, # Xima or unprocessed corn porridge, millet, mapira, corn cob, wholemeal bread or corn cob popcorn
+         root_crop_porridge = form.Section_II_group.batata_batata_doce_branca_inhame_mandioca_xima_de_mandioca_ou_papas_de_mand,
+         beans = form.Section_II_group.feijo_comum_feijo_nhemba_ervilha_feijo_boer_feijo_jugo_feijo_soroco_ou_soja, 
+         orange_vegetables = form.Section_II_group.cenoura_abbora_ou_batata_doce_de_polpa_alaranjada,# Carrot, pumpkin or orange-fleshed sweet potato
+         leafy_vegetables = form.Section_II_group.couve_folhas_de_abobora_folhas_de_cacana_folhas_de_batata_doce_folha_de_fei, # Cabbage, pumpkin leaves, cacana leaves, sweet potato leaves, cowpea leaves or cassava leaves
+         tomato_cabbage_mushroom = form.Section_II_group.tomate_repolho_quiabo_beringela_ou_cogumelos, # Tomato, cabbage, okra, eggplant or mushrooms
+         salad_vegetables = form.Section_II_group.alface_pepino_feijo_verde_ou_pimento_verde, # Lettuce, cucumber, green beans or green pepper
+         yellow_fruits = form.Section_II_group.manga_madura_papaia_madura_ou_maracuj, # Ripe mango, ripe papaya or passion fruit
+         citrus = form.Section_II_group.laranja_ou_tangerinas,
+         long_cycle_fruits = form.Section_II_group.bananas_melancia_abacate_lichia_caju_anans_ou_malambe, # Bananas, watermelon, avocado, lychee, cashew, pineapple or malambe
+         apples = form.Section_II_group.ma_pra_goiaba_massala_ata_mapfilo_tintsiva_ou_mafurra, # Apple, pear, guava, massala, ata, mapfilo, tintsiva, or mafurra
+         cakes = form.Section_II_group.bolos_bolinhos_bolachas_doces_argolas_fritas_bolas_de_berlim_ou_fiosso, # Cakes, cupcakes, sweet biscuits, fried rings, Berlin balls or yarn
+         eggs = form.Section_II_group.ovos, 
+         cheese = form.Section_II_group.queijo, 
+         sausages = form.Section_II_group.paloni_salsichas_ou_enchidos_como_chourio_linguia_rachel_russian_ou_vorse, # Paloni, sausages, or sausages like chorizo, linguiça, rachel, Russian or vorse
+         meat = form.Section_II_group.carne_de_vaca_carne_de_cabrito_carne_de_ovelha_gazela_ou_bufalo, # Beef, goat meat, sheep meat, gazelle or buffalo
+         pork_rabbit = form.Section_II_group.carne_de_porco_carne_de_ratazana_ou_coelho, # Pork, rat or rabbit meat
+         poultry = form.Section_II_group.galinha_pato_peru_codorniz_ou_passarinhos, # Chicken, duck, turkey, quail or birds
+         fish = form.Section_II_group.peixe_fresco_ou_seco_camaro_fresco_ou_seco_caranguejo_lulas_ou_ameijoa, # Fresh or dried fish, fresh or dried shrimp, crab, squid or clams
+         nuts = form.Section_II_group.amendoim_manteiga_de_amendoim_amendoim_modo_castanhas_de_caj_ou_sementes_de, # Peanuts, peanut butter, ground peanuts, cashews or pumpkin seeds
+         popcorns = form.Section_II_group.chips_pipocas_de_pacote_ou_niknaks, # Chips, popcorn or NikNaks
+         instant_pasta = form.Section_II_group.massa_instantnea,
+         fries = form.Section_II_group.batatas_fritas_badjia_peixe_frito_ou_frango_frito, # Deep fried foods
+         palm_oil = form.Section_II_group.leo_de_palma_vermelho, 
+         fast_foods = `form.Section_II_group.copy-1-of-leo_de_palma_vermelho`, # KFC, Debonairs Pizza, Teka Famba, Burger House, Flaming Dogs or other places that serve pizza or burgers
+         sweets = form.Section_II_group.chupa_chupa_ou_doces_bombom_chocolate_sorvete_ou_gelinho)  %>% # Lollipops or sweets, bonbons, chocolate, ice cream or popsicles
+   
+
+  mutate(
+    across(c(have_child,breastfed,infant_formula,animal_milk,chocolate_milk,juices,soft_drinks,plant_base_drink,soups_broth,yoghurt,processed_porridge,shrimp_snails,unprocessed_porridge,root_crop_porridge,
+             beans, orange_vegetables,leafy_vegetables,green_leafy_vegetables,tomato_cabbage_mushroom,salad_vegetables,yellow_fruits,citrus,long_cycle_fruits,apples,cakes,eggs,cheese,sausages,meat,pork_rabbit,poultry,
+             fish,nuts,popcorns,instant_pasta,fries,palm_oil,fast_foods,sweets), ~ ifelse(. == "sim", 1,0))
+  ) %>% 
+  filter(have_child == 1) %>%
+  
+  mutate(
+    ## Dietary Diversity Score for the entire children population
+    dds = (rowSums(tibble(processed_porridge, unprocessed_porridge, root_crop_porridge) == 1) > 0) + # Grains, roots, tubers
+      (rowSums(tibble(beans) == 1) > 0) + # Pulses
+      (rowSums(tibble(nuts) == 1) > 0) + # Nuts and seeds
+      (rowSums(tibble(animal_milk, cheese, yoghurt) == 1) > 0) + # Dairy
+      (rowSums(tibble(meat, sausages, pork_rabbit, poultry, fish, shrimp_snails) == 1) > 0) + # Meat, poultry, fish
+      (rowSums(tibble(green_leafy_vegetables, leafy_vegetables) == 1) > 0) + # Dark green leafy vegetables
+      (rowSums(tibble(eggs) == 1) > 0) + # Eggs
+      (rowSums(tibble(orange_vegetables, tomato_cabbage_mushroom, yellow_fruits, citrus, apples) == 1) > 0) + # Vitamin A-rich fruits and vegetables
+      (rowSums(tibble(long_cycle_fruits) == 1) > 0),# Other fruits
+    all_5 = (rowSums(tibble(processed_porridge, unprocessed_porridge, root_crop_porridge) == 1) > 0) + # Starchy staples
+      (rowSums(tibble(green_leafy_vegetables, leafy_vegetables, orange_vegetables, tomato_cabbage_mushroom, salad_vegetables) == 1) > 0) + # Vegetables
+      (rowSums(tibble(yellow_fruits, citrus,long_cycle_fruits, apples) == 1) > 0) + # Fruits
+      (rowSums(tibble(beans,nuts) == 1) > 0) + # Pulses, nuts and seeds
+      (rowSums(tibble(animal_milk, yoghurt, eggs, cheese, sausages, meat, poultry, fish, shrimp_snails) == 1) > 0), # Animal-source foods
+    ncd_protect = (rowSums(tibble(unprocessed_porridge) == 1) > 0) + # Whole grain
+      (rowSums(tibble(beans) == 1) > 0) + # Pulses
+      (rowSums(tibble(nuts) == 1) > 0) + # Nuts and seeds
+      (rowSums(tibble(citrus) == 1) > 0) + # Citrus
+      (rowSums(tibble(orange_vegetables) == 1) > 0) + # Vitamin A-rich orange vegetable
+      (rowSums(tibble(green_leafy_vegetables, leafy_vegetables) == 1) > 0) + # Dark green leafy vegetables
+      (rowSums(tibble(apples, yellow_fruits) == 1) > 0) + # Vitamin A-rich fruits
+      (rowSums(tibble(tomato_cabbage_mushroom) == 1) > 0) + # Other vegetables
+      (rowSums(tibble(long_cycle_fruits) == 1) > 0),# Other fruits
+    ncd_risk = (rowSums(tibble(chocolate_milk, juices, soft_drinks) == 1) > 0) + # Represents: Soft drinks. I added juices because it was not clear from the survey whether natural fruit juice or otherwise.
+      (rowSums(tibble(cakes) == 1) > 0) + # Baked/grain-based sweets
+      (rowSums(tibble(sweets) == 1) > 0) + # Other sweets
+      2 * (rowSums(tibble(sausages) == 1) > 0) + # Processed meat
+      (rowSums(tibble(meat, pork_rabbit) == 1) > 0) + # Unprocessed meat
+      (rowSums(tibble(fries) == 1) > 0) + # Deep fried food
+      (rowSums(tibble(fast_foods, instant_pasta) == 1) > 0) + # Fast food & instant noodles
+      (rowSums(tibble(popcorns) == 1) > 0), # Packaged ultra-processed salty snacks
+    dds_binary = ifelse(dds >= 5, 1,0), # Calculating binary DDS
+    
+    all_5_binary = ifelse(all_5 == 5, 1,0), # Calculating binary All- 5
+    
+    ncd_protect_binary = ifelse(ncd_protect >= 5, 1,0), # Calculating binary NCD protect
+    
+    ncd_risk_binary = ifelse(ncd_risk >= 5, 1,0), # Calculating binary NCD protect
+    
+    gdr_score = (ncd_protect - ncd_risk) + 9, # Calculating General Dietary Recommendation (GDR score)
+    
+    ## Calculating various all 5 food groups for a graph
+    starchy_staple = if_else(rowSums(across(c(processed_porridge, unprocessed_porridge, root_crop_porridge)) == 1) > 0, 1, 0),
+    Vegetables = if_else(rowSums(across(c(green_leafy_vegetables, leafy_vegetables, orange_vegetables, 
+                                          tomato_cabbage_mushroom, salad_vegetables)) == 1) > 0, 1, 0),
+    fruits = if_else(rowSums(across(c(yellow_fruits, citrus, long_cycle_fruits, apples)) == 1) > 0, 1, 0),
+    pulses = if_else(rowSums(across(c(beans,nuts)) == 1) > 0, 1, 0),
+    protein = if_else(rowSums(across(c(animal_milk,yoghurt,eggs,cheese,sausages,meat,poultry,fish,shrimp_snails)) == 1) > 0, 1, 0)
+  )
+
+```
+
+```{r}
+mean_dds_score <- round(mean(Selected_Child_indicators$dds),1) # Calculating the average DDS score for the entire population
+  
+  mean_all_5_score <- round(mean(Selected_Child_indicators$all_5),1) # Calculating the average All 5 score for the entire population
+  
+  mean_ncd_protect_score <- round(mean(Selected_Child_indicators$ncd_protect),1) # Calculating the average NCD protect score for the entire population
+  
+  mean_ncd_risk_score <- round(mean(Selected_Child_indicators$ncd_risk),1) # Calculating the average NCD risk score for the entire population
+  
+  mean_gdr_score <- round(mean(Selected_Child_indicators$gdr_score),1) # Calculating the average GDR score for the entire population
+  
+   breastfeeding <- Selected_Child_indicators%>%
+     filter(have_child == 1)
+   
+   breastfeeding  <- breastfeeding %>% 
+     summarise(
+       total = n(),
+       breastfed = sum(breastfed == 1, na.rm = TRUE),
+       percent_breastfed = (breastfed / total) * 100)
+   
+   immbreastfeeding <- Selected_Child_indicators%>%
+     filter(breastfed == 1)
+   
+   immbreastfeeding  <- immbreastfeeding %>% 
+     summarise(
+       total = n(),
+       imm_breastfed = sum(early_breastfeed == 1, na.rm = TRUE),
+       percent_early_breastfed = (as.numeric(imm_breastfed) / total) * 100)
+     
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+## Calculating the percentage of child dss scores above 5
+#Calculating DDS and All-5 for children without breastfeeding
+
+dds_percentage <- Selected_Child_indicators %>% 
+  filter(have_child == 1, breastfed == 0) %>% 
+  summarise(
+    total_count = n(),
+    count_five = sum(dds_binary == 1, na.rm = TRUE),
+    percentage_five = (count_five/total_count) * 100,
+  )
+
+# print(dds_percentage, row.names = FALSE)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#### Children All-5 score percentage
+## Calculating percentage of each child All-5 score
+
+all_5_percentage <- Selected_Child_indicators %>%
+  filter(have_child == 1,breastfed == 0) %>%
+  group_by(all_5) %>% 
+  summarise(frequency = n()) %>%
+  mutate (percentage = round(frequency / sum(frequency)*100))
+# print(all_5_percentage)
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+####  Presenting the percentage of children consuming a specific food group
+## The percentage of children consuming a specific food group
+
+specific_all_5_group <-Selected_Child_indicators %>% 
+  filter(have_child == 1,breastfed == 0) %>%
+  select(starchy_staple,Vegetables,fruits,pulses,protein) %>% 
+  summarise(round(across(everything(),~ mean(.==1) *100))) %>% 
+  pivot_longer(cols = everything(), names_to = "Food Group", values_to = "Percentage")
+# print(specific_all_5_group)
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#### Presenting percentage and graph of Child GDR score for the population
+gdr_percentage <- Selected_Child_indicators %>% 
+  filter(have_child == 1,breastfed == 0) %>%
+  group_by(gdr_score) %>% 
+  summarise(Count = n()) %>% 
+  mutate(Percentage = round((Count / sum(Count)) * 100))
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#### Displaying mean of various adult indicator score
+Selected_adult_indicators <- Mangwana_Baseline_Survey %>%
+  select(formid,form.Section_II_group.ontem_comeu_algum_dos_seguintes_alimentos,form.Section_II_group.comeu_algum_dos_seguintes_alimentos,form.Section_II_group.ontem_comeu_alguma_das_seguintes_frutas,
+         form.Section_II_group.ontem_comeu_algum_dos_seguintes_doces,form.Section_II_group.ontem_comeu_algum_dos_seguintes_alimentos_de_origem_animal,
+         form.Section_II_group.ontem_comeu_algum_dos_seguintes_outros_alimentos,form.Section_II_group.ontem_tomou_alguma_das_seguintes_bebidas,form.Section_II_group.ontem_conseguiu_comida_em_algum_lugar_como) %>% 
+  
+  rename(carbohydrate = form.Section_II_group.ontem_comeu_algum_dos_seguintes_alimentos,
+         vegetables = form.Section_II_group.comeu_algum_dos_seguintes_alimentos,
+         fruits = form.Section_II_group.ontem_comeu_alguma_das_seguintes_frutas,
+         sweets_adult = form.Section_II_group.ontem_comeu_algum_dos_seguintes_doces,
+         animal_protein = form.Section_II_group.ontem_comeu_algum_dos_seguintes_alimentos_de_origem_animal,
+         other_foods = form.Section_II_group.ontem_comeu_algum_dos_seguintes_outros_alimentos,
+         drinks = form.Section_II_group.ontem_tomou_alguma_das_seguintes_bebidas,
+         fast_food = form.Section_II_group.ontem_conseguiu_comida_em_algum_lugar_como) %>% 
+  
+  mutate(grains = ifelse(grepl("arroz_po_massa_esparguete_xima_de_farinha_de_milho_processada_papas_de_fari|xima_ou_papas_de_milho_no_processado_mexoeira_mapira_maaroca_po_integral_ou|batata_batata_doce_branca_inhame_mandioca_xima_de_mandioca_ou_papas_de_mand",
+                               carbohydrate),1,0), # Classified processed and whole grain crops, tubers, porridge
+         pulses = ifelse(grepl("mangwana_forms_mangwana_forms_100_10_d264_feijo_feijo_nhemba_ervilha_feijo_", carbohydrate),1,0), # Classified beans, cowpea, peas, pigeon peas
+         nuts = ifelse(grepl("amendoim_manteiga_de_amendoim_amendoim_modo_castanhas_de_caj_ou_sementes_de",other_foods),1,0), # Classified nuts and seeds
+         diary = ifelse(grepl("leite_fresco_ou_leite_em_p",drinks),1,0), # Classified animal milk
+         meat_fish = ifelse(grepl("paloni_salsichas_ou_enchidos_como_chourio_linguia_rachel_russian_ou_vorse|carne_de_vaca_carne_de_cabrito_fgado_carne_de_ovelha_gazela_ou_bufalo|
+                                    carne_de_porco_carne_de_ratazana_ou_coelho|galinha_moela_pato_peru_codorniz_ou_passarinhos|
+                                    peixe_fresco_ou_seco_camaro_fresco_ou_seco_caranguejo_lulas_ou_ameijoa", animal_protein),1,0), # Animal protein
+         diary_product = ifelse(grepl("queijo|iogurte",animal_protein),1,0), # diary product
+         dark_leafy_veg = ifelse(grepl("couve_folhas_de_abobora_folhas_de_cacana_folhas_de_batata_doce_folha_de_fei|brculos_espinafres_folhas_de_moringa_folhas_de_amaranto_ou_quiabo_de_folha", vegetables),1,0), # Dark leafy green vegetables
+         egg = ifelse(grepl("ovos",animal_protein),1,0), # Egg
+         vitamin_A_veg = ifelse(grepl("cenoura_abbora_ou_batata_doce_de_polpa_alaranjada|tomate_repolho_quiabo_beringela_ou_cogumelos|alface_pepino_feijo_verde_ou_pimento_verde", vegetables),1,0), # Vitamin A rich vegetables
+         vitamin_A_orange_veg = ifelse(grepl("cenoura_abbora_ou_batata_doce_de_polpa_alaranjada", vegetables),1,0), # Vitamin A orange vegetables
+         vitamin_A_fruit = ifelse(grepl("manga_papaia_ou_maracuj|laranja_ou_tangerinas|ma_pra_goiaba_massala_ata_mapfilo_tintsiva_ou_mafurra", fruits),1,0), # Vitamin A rich fruits
+         other_fruit = ifelse(grepl("bananas_melancia_abacate_lichia_caju_anans_ou_malambe", fruits),1,0), # Other fruits
+         whole_grain = ifelse(grepl("xima_ou_papas_de_milho_no_processado_mexoeira_mapira_maaroca_po_integral_ou",
+                                    carbohydrate),1,0), # Classified whole grain crops
+         citrus_fruit = ifelse(grepl("laranja_ou_tangerinas", fruits),1,0), # Citrus fruits
+         soft_drink = ifelse(grepl("refrescos_como_coca-cola_fanta_frozy_ou_fizz_ou_bebidas_energticas_como_o_r|sumos_ou_sumos_em_p|ch_com_acucar_caf_com_acucar_ou_achocolatado_como_milo", drinks),1,0), # Soft drinks
+         sweet_snacks = ifelse(grepl("chips_pipocas_de_pacote_ou_niknaks", other_foods),1,0), # snack-based sweets
+         adult_sweet = ifelse(grepl("bolos_bolinhos_bolachas_doces_argolas_fritas_bolas_de_berlim_ou_fiosso|chupa_chupa_ou_doces_bombom_chocolate_sorvete_ou_gelinho", sweets_adult),1,0), # Baked and other sweets
+         processed_meat = ifelse(grepl("paloni_salsichas_ou_enchidos_como_chourio_linguia_rachel_russian_ou_vorse", animal_protein),1,0), # Processed meat
+         unprocessed_meat = ifelse(grepl("carne_de_vaca_carne_de_cabrito_fgado_carne_de_ovelha_gazela_ou_bufalo|carne_de_porco_carne_de_ratazana_ou_coelho|
+                                    galinha_moela_pato_peru_codorniz_ou_passarinhos", animal_protein),1,0), # Unprocessed meat
+         deep_fried_food = ifelse(grepl("peixe_fresco_ou_seco_camaro_fresco_ou_seco_caranguejo_lulas_ou_ameijoa", animal_protein),1,0), # Deep fried foods
+         fast_food = ifelse(grepl("refrescos_como_coca-cola_fanta_frozy_ou_fizz_ou_bebidas_energticas_como_o_r", fast_food),1,0), # Fast foods
+         
+         ## Dietary Diversity Score for the entire adult population
+         adult_dds = (rowSums(tibble(grains)==1) >0) +
+           (rowSums(tibble(pulses)==1) >0) +
+           (rowSums(tibble(nuts)==1) >0) + 
+           (rowSums(tibble(diary)==1) >0) +
+           (rowSums(tibble(meat_fish)==1) >0) +
+           (rowSums(tibble(dark_leafy_veg)==1) >0) +
+           (rowSums(tibble(egg)==1) >0) +
+           (rowSums(tibble(vitamin_A_veg,vitamin_A_fruit)==1) >0) +
+           (rowSums(tibble(other_fruit)==1) >0),
+         adult_all_5 = (rowSums(tibble(grains)==1) >0) +
+           (rowSums(tibble(dark_leafy_veg,vitamin_A_veg)==1) >0) +
+           (rowSums(tibble(vitamin_A_fruit,other_fruit)==1) >0) + 
+           (rowSums(tibble(nuts)==1) >0) +
+           (rowSums(tibble(meat_fish)==1) >0),
+         adult_ncd_protect = (rowSums(tibble(whole_grain)==1) >0) +
+           (rowSums(tibble(nuts)==1) >0) +
+           (rowSums(tibble(citrus_fruit)==1) >0) +
+           (rowSums(tibble(vitamin_A_veg)==1) >0) + 
+           (rowSums(tibble(dark_leafy_veg)==1) >0) +
+           (rowSums(tibble(vitamin_A_fruit)==1) >0) +
+           (rowSums(tibble(other_fruit)==1) >0),
+         adult_ncd_risk = (rowSums(tibble(soft_drink)==1) >0) +
+           (rowSums(tibble(sweet_snacks)==1) >0) +
+           (rowSums(tibble(adult_sweet)==1) >0) +
+           2 * (rowSums(tibble(processed_meat)==1) >0) +
+           (rowSums(tibble(unprocessed_meat)==1) >0) +
+           (rowSums(tibble(deep_fried_food)==1) >0) +
+           (rowSums(tibble(fast_food)==1) >0),
+         ## Calculating binaries and gdr score for adult population
+         adult_dss_binary =  ifelse(adult_dds >= 5, 1,0),
+         adult_all_5_binary = ifelse(adult_all_5 == 5, 1,0),
+         adult_ncd_protect_binary = ifelse(adult_ncd_protect >= 5, 1,0),
+         adult_ncd_risk_binary = ifelse(adult_ncd_risk>= 5, 1,0),
+         adult_gdr_score = (adult_ncd_protect - adult_ncd_risk) + 9, #Calculating General Dietary Recommendation (GDR score)
+         ## Calculating various all 5 food groups for a graph
+         carbs = ifelse(!is.na(carbohydrate) & carbohydrate != "",1,0),
+         fruit = ifelse(!is.na(fruits) & fruits != "",1,0),
+         vegetable = ifelse(!is.na(vegetables) & vegetables != "",1,0),
+         proteins = ifelse(!is.na(animal_protein) & animal_protein != "",1,0),
+         pulse = if_else(rowSums(across(c(pulses,nuts)) == 1) > 0, 1, 0))
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#### Displaying updated data and calculating means of various scores for adult population
+avg_dds_score <- round(mean(Selected_adult_indicators$adult_dds),1) # Calculating the average DDS score for the entire population
+
+avg_all_5_score <- round(mean(Selected_adult_indicators$adult_all_5),1) # Calculating the average All 5 score for the entire population
+
+avg_ncd_protect_score <- round(mean(Selected_adult_indicators$adult_ncd_protect),1) # Calculating the average NCD protect score for the entire population
+
+avg_ncd_risk_score <- round(mean(Selected_adult_indicators$adult_ncd_risk),1) # Calculating the average NCD risk score for the entire population
+
+avg_gdr_score <- round(mean(Selected_adult_indicators$adult_gdr_score),1) # Calculating the average GDR score for the entire population
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+### Calculating the various percentages and graphs of adult indicators.
+
+#### Presenting percentages of adult DDS
+adult_dds_percentage <- Selected_adult_indicators %>%
+  group_by(adult_dds) %>% 
+  summarise(dds_count = n()) %>%
+  mutate (percentage = round(dds_count / sum(dds_count)*100))
+# print(adult_dds_percentage)
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+### Selecting indicators for Resilience to shocks
+Resilience <- Mangwana_Baseline_Survey %>% 
+  select(formid, form.Section_III_group.missed_food, form.Section_III_group.Months_missed_food, form.Section_III_group.you_feared_HH_not_have_enough_food,form.Section_III_group.how_may_times_HH_not_have_enough_food,
+         form.Section_III_group.not_enough_food,form.Section_III_group.how_many_times_not_enough_food, form.Section_III_group.all_day_night_not_eating, form.Section_III_group.how_many_times_all_day_night_not_eating) %>% # Selected indicators of interest
+  
+  mutate(
+    MAHFP = 12 - sapply(strsplit(ifelse(form.Section_III_group.Months_missed_food == "---","",form.Section_III_group.Months_missed_food)," "), length), # Calculated the months of adequate food
+    across(c(form.Section_III_group.how_may_times_HH_not_have_enough_food, form.Section_III_group.how_many_times_not_enough_food,form.Section_III_group.how_many_times_all_day_night_not_eating), ~ case_when(. %in% c("Sometimes", "Rarely") ~ 1, . == "---" ~ 0, . == "Frequently" ~ 2)), # Replaced three category indicators with integers
+    hhs_score = form.Section_III_group.how_may_times_HH_not_have_enough_food + form.Section_III_group.how_many_times_not_enough_food + form.Section_III_group.how_many_times_all_day_night_not_eating,
+    hunger_scores = case_when(hhs_score <= 1 ~ "Little to no hunger",
+                              hhs_score <= 3 ~ "Moderate hunger",
+                              hhs_score <=6 ~ "Severe hunger") # Classified the household hunger scores from little to severe. 
+    
+  ) 
+
+
+MAHFP_months <- Resilience %>% 
+  select(form.Section_III_group.Months_missed_food) %>% 
+  mutate(months = na_if(form.Section_III_group.Months_missed_food, "---"),
+         months = str_to_title(months)) %>%
+  drop_na() %>% 
+  separate_rows(months, sep = " ") %>% 
+  count(months)
+MAHFP_months$months <- factor(MAHFP_months$months,
+                               levels = month.name)
+
+Average_MAHFP <- round(mean(Resilience$MAHFP),1) # Average months households had adequate food.
+# print(paste("Average MAHFP for the population is", Average_MAHFP))
+
+Median_hhs_score <- median(Resilience$hhs_score) # Median value of HHS score
+#  print(paste("Median HHS score for the population is", Median_hhs_score))
+
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#### Percentage of HHS scores
+HHS_percentage <- Resilience %>% 
+  group_by(hunger_scores) %>% 
+  summarise(Count = n()) %>% 
+  mutate(Percentage = round((Count / sum(Count)) * 100))
+# print(HHS_percentage)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#### Additional calculations for MAHFP follow up
+## Arranging the MAHFP for follow up
+
+MAHFP_resilience <- Resilience %>%
+  select(MAHFP) %>% 
+  arrange(MAHFP) 
+MAHFP_num <- nrow(MAHFP_resilience)
+MAHFP_number <- ceiling(MAHFP_num / 3)
+top_third <- MAHFP_resilience %>% 
+  slice((MAHFP_num -  MAHFP_number + 1): MAHFP_num) 
+mean_top_third <- mean(top_third$MAHFP)
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+## Agriculture indicators.
+
+### Baseline dry season crops
+## Merging the general data sheet and the repeat agriculture sheet to filter to baseline data
+
+## Importing baseline dry season dataset
+
+## Selecting only baseline season records to be used for agricultural calculations
+
+Baseline_drought_data <- Mangwana_Baseline_Survey %>%
+  filter(form.Section_IV_ProductionAreas.que_tipo_de_inqurito_est_a_realizar == "inqurito_de_base_para_as_duas_ltimas_pocas")
+
+
+Drought_repeat_Survey <- read_excel("Mangwana - Baseline Survey.xlsx",
+                                    sheet = "BL_dryseason_crops")
+
+
+Mangwana_Baseline_Survey <- read_excel("Mangwana - Baseline Survey.xlsx", 
+                                       sheet = "Forms")
+
+## Constant variables
+number_dryseason_weeks <- 23
+number_rainy_season_weeks <- 29 ## Confirm this from team
+Standard_workhours <- 8
+PPP <- 24.95 ## Current (2025) PPP. Source: https://www.imf.org/external/datamapper/PPPEX@WEO/MOZ?zoom=MOZ&highlight=MOZ
+
+## Data manipulation
+
+extract_kg <- function(unit_measure) {
+  unit_measure <- tolower(trimws(unit_measure))
+  if (unit_measure == "other_unit_measure_baseline_rainseason") {
+    return(20)
+  }
+  if (str_detect(unit_measure, "quilo")) {
+    return(1)
+  }
+  matches <- str_match_all(unit_measure, "(\\d+)(?=[_=]?kg)")[[1]]
+  if (nrow(matches) > 0) {
+    return(as.numeric(tail(matches[, 1], 1)))
+  }
+  return(NA_real_)
+}
+
+
+Baseline_drought <- Drought_repeat_Survey %>%
+  
+  
+  inner_join(Mangwana_Baseline_Survey %>%  select(formid,form.Section_IV_ProductionAreas.que_tipo_de_inqurito_est_a_realizar), by = c("formid" = "formid")) %>% 
+  
+  filter(form.Section_IV_ProductionAreas.que_tipo_de_inqurito_est_a_realizar == "inqurito_de_base_para_as_duas_ltimas_pocas") %>% 
+  
+  mutate(across(everything(), ~ case_when(. == "---" ~ "0",
+                                          . == " " ~ "0",
+                                          is.na(.) ~ "0",
+                                          TRUE ~ as.character(.)))) %>% 
+  
+  rename(qty_crops_produced = form.Section_IV_ProductionAreas.baseline_dryseason_questions.repeat_baseline_dryseason_crops.qty_baseline_produced_dry_season,
+         cropland_ha = form.Section_IV_ProductionAreas.baseline_dryseason_questions.repeat_baseline_dryseason_crops.baseline_cropland_dryseason,
+         days_per_week_fieldwork = form.Section_IV_ProductionAreas.baseline_dryseason_questions.repeat_baseline_dryseason_crops.days_of_work_dryseason_baseline,
+         hours_per_day_fieldwork = form.Section_IV_ProductionAreas.baseline_dryseason_questions.repeat_baseline_dryseason_crops.hours_of_work_dryseason_baseline,
+         number_family_labour = form.Section_IV_ProductionAreas.baseline_dryseason_questions.repeat_baseline_dryseason_crops.number_farm_assisatnce_baseline,
+         assist_days_perweek_fieldwork = form.Section_IV_ProductionAreas.baseline_dryseason_questions.repeat_baseline_dryseason_crops.baseline_farm_assist_days,
+         assist_hoursper_fieldwork = form.Section_IV_ProductionAreas.baseline_dryseason_questions.repeat_baseline_dryseason_crops.baseline_farm_assist_hours, 
+         number_paid_labour = form.Section_IV_ProductionAreas.baseline_dryseason_questions.repeat_baseline_dryseason_crops.seasonal_hiredworkers_baseline,
+         paidlabour_days_perweek_fieldwork = form.Section_IV_ProductionAreas.baseline_dryseason_questions.repeat_baseline_dryseason_crops.days_of_hiredwork_dryseason_baseline,
+         paidlabour_hours_per_fieldwork = form.Section_IV_ProductionAreas.baseline_dryseason_questions.repeat_baseline_dryseason_crops.hours_of_hiredwork_dryseason_baseline,
+         qty_crops_sold = form.Section_IV_ProductionAreas.baseline_dryseason_questions.repeat_baseline_dryseason_crops.qty_sold_dryseason_baseline,
+         price_per_unit_sold = form.Section_IV_ProductionAreas.baseline_dryseason_questions.repeat_baseline_dryseason_crops.price_sold_dryseason_baseline,
+         seed_expense = form.Section_IV_ProductionAreas.baseline_dryseason_questions.repeat_baseline_dryseason_crops.expense_on_seeds_dry_season_baseline,
+         equipment_expense = form.Section_IV_ProductionAreas.baseline_dryseason_questions.repeat_baseline_dryseason_crops.expense_on_equipment_dry_season_baseline,
+         fert_expense = form.Section_IV_ProductionAreas.baseline_dryseason_questions.repeat_baseline_dryseason_crops.expense_on_fert_dry_season_baseline,
+         labour_expense = form.Section_IV_ProductionAreas.baseline_dryseason_questions.repeat_baseline_dryseason_crops.expense_on_labor_dry_season_baseline,
+         other_expense = form.Section_IV_ProductionAreas.baseline_dryseason_questions.repeat_baseline_dryseason_crops.expense_on_other_dry_season_baseline,
+         pesticide_expense = form.Section_IV_ProductionAreas.baseline_dryseason_questions.repeat_baseline_dryseason_crops.expense_on_pesticidas_dry_season_baseline) %>% 
+  
+  mutate(across(c(qty_crops_produced, cropland_ha, days_per_week_fieldwork, hours_per_day_fieldwork, assist_days_perweek_fieldwork, assist_hoursper_fieldwork, paidlabour_days_perweek_fieldwork,
+                  paidlabour_hours_per_fieldwork,qty_crops_sold,price_per_unit_sold, number_paid_labour, number_family_labour, seed_expense,equipment_expense, fert_expense,labour_expense,other_expense,pesticide_expense), as.numeric)) %>% 
+  
+  ## Calculating  Labour days and productivity 
+  
+  mutate(total_weeks_fieldwork = rowSums(across(c(days_per_week_fieldwork,assist_days_perweek_fieldwork,paidlabour_days_perweek_fieldwork))),
+         dry_unit_kg = sapply(form.Section_IV_ProductionAreas.baseline_dryseason_questions.repeat_baseline_dryseason_crops.unit_measure_produce_dry_season_baseline, extract_kg),
+         qty_prod_kg = ifelse(is.na(dry_unit_kg), 0,qty_crops_produced * dry_unit_kg),
+         personallabour_time= days_per_week_fieldwork*hours_per_day_fieldwork,
+         assistedlabour_time = assist_days_perweek_fieldwork * assist_hoursper_fieldwork*number_family_labour,
+         paidlabour_time = paidlabour_days_perweek_fieldwork * paidlabour_hours_per_fieldwork*number_paid_labour,
+         personallabour_days = (personallabour_time*number_dryseason_weeks)/Standard_workhours,
+         assistedlabour_days = (assistedlabour_time*number_dryseason_weeks)/Standard_workhours,
+         paidlabour_days = (paidlabour_time*number_dryseason_weeks)/Standard_workhours,
+         total_labour_days = rowSums(across(c(personallabour_days, assistedlabour_days, paidlabour_days))),
+         drysale_unit_kg = sapply(form.Section_IV_ProductionAreas.baseline_dryseason_questions.repeat_baseline_dryseason_crops.unit_measure_baseline_sold_dryseason, extract_kg),
+         qty_sold_kg = ifelse(is.na(drysale_unit_kg),0,qty_crops_produced * drysale_unit_kg),
+         crops_income = qty_sold_kg*price_per_unit_sold,
+         productivity = (qty_prod_kg*price_per_unit_sold)/total_labour_days,
+         total_expense = rowSums(across(c(seed_expense,pesticide_expense,fert_expense,equipment_expense,other_expense,labour_expense))),
+         crop_yield = qty_prod_kg/cropland_ha,
+         gross_agric_income = crops_income - total_expense)
+
+## Productivity
+
+total_crop_income <-sum(Baseline_drought$crops_income)
+# print(paste("Total dry season income for the population is", total_crop_income))
+
+## Agriculture gross income
+
+agric_gross <- sum(Baseline_drought$gross_agric_income)
+# print(paste("Total dry season gross income for the population is", agric_gross))
+
+## Grouping data for merging
+Baseline_drought_grouped <- Baseline_drought %>% 
+  select(qty_sold_kg,price_per_unit_sold, qty_prod_kg, cropland_ha, formid, personallabour_time,assistedlabour_time,personallabour_days,assistedlabour_days,paidlabour_days,
+         total_labour_days, crops_income,productivity,total_expense,crop_yield,gross_agric_income) %>% 
+  group_by(formid) %>%
+  summarise(across(where(is.numeric),  \(x) sum(x, na.rm = TRUE)), .groups = "drop")
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+### Baseline rainy season crops
+Rainy_repeat_Survey <- read_excel("Mangwana - Baseline Survey.xlsx",
+                                  sheet = "BL_rainseason_crops")
+
+
+Baseline_rainy <- Rainy_repeat_Survey %>%
+  
+  
+  inner_join(Mangwana_Baseline_Survey %>%  select(formid,form.Section_IV_ProductionAreas.que_tipo_de_inqurito_est_a_realizar), by = c("formid" = "formid")) %>% 
+  
+  filter(form.Section_IV_ProductionAreas.que_tipo_de_inqurito_est_a_realizar == "inqurito_de_base_para_as_duas_ltimas_pocas") %>% 
+  
+  mutate(across(everything(), ~ case_when(. == "---" ~ "0",
+                                          . == " " ~ "0",
+                                          is.na(.) ~ "0",
+                                          TRUE ~ as.character(.)))) %>% 
+  
+  rename(rainy_qty_crops_produced = form.Section_IV_ProductionAreas.baseline_rainy_season_questions.repeat_baseline_rainseason_crops.qty_baseline_produced_rain_season,
+         rainy_cropland_ha = form.Section_IV_ProductionAreas.baseline_rainy_season_questions.repeat_baseline_rainseason_crops.baseline_cropland_rainseason,
+         rainy_days_per_week_fieldwork = form.Section_IV_ProductionAreas.baseline_rainy_season_questions.repeat_baseline_rainseason_crops.days_of_work_rainseason_baseline,
+         rainy_hours_per_day_fieldwork = form.Section_IV_ProductionAreas.baseline_rainy_season_questions.repeat_baseline_rainseason_crops.hours_of_work_rainseason_baseline,
+         rainy_number_family_labour = form.Section_IV_ProductionAreas.baseline_rainy_season_questions.repeat_baseline_rainseason_crops.number_farm_assisatnce_baseline_rain,
+         rainy_assist_days_perweek_fieldwork = form.Section_IV_ProductionAreas.baseline_rainy_season_questions.repeat_baseline_rainseason_crops.baseline_farm_assist_days_rain,
+         rainy_assist_hoursper_fieldwork = form.Section_IV_ProductionAreas.baseline_rainy_season_questions.repeat_baseline_rainseason_crops.baseline_farm_assist_hours_rain, 
+         rainy_number_paid_labour = form.Section_IV_ProductionAreas.baseline_rainy_season_questions.repeat_baseline_rainseason_crops.seasonal_hiredworkers_baseline_rain,
+         rainy_paidlabour_days_perweek_fieldwork = form.Section_IV_ProductionAreas.baseline_rainy_season_questions.repeat_baseline_rainseason_crops.days_of_hiredwork_rainseason_baseline,
+         rainy_paidlabour_hours_per_fieldwork = form.Section_IV_ProductionAreas.baseline_rainy_season_questions.repeat_baseline_rainseason_crops.hours_of_hiredwork_rainseason_baseline,
+         rainy_qty_crops_sold = form.Section_IV_ProductionAreas.baseline_rainy_season_questions.repeat_baseline_rainseason_crops.qty_sold_rainyseason_baseline,
+         rainy_price_per_unit_sold = form.Section_IV_ProductionAreas.baseline_rainy_season_questions.repeat_baseline_rainseason_crops.price_sold_dryseason_baseline,
+         rainy_seed_expense = form.Section_IV_ProductionAreas.baseline_rainy_season_questions.repeat_baseline_rainseason_crops.expense_on_seeds_rain_season_baseline,
+         rainy_equipment_expense = form.Section_IV_ProductionAreas.baseline_rainy_season_questions.repeat_baseline_rainseason_crops.expense_on_equipment_rain_season_baseline,
+         rainy_fert_expense = form.Section_IV_ProductionAreas.baseline_rainy_season_questions.repeat_baseline_rainseason_crops.expense_on_fert_rain_season_baseline,
+         rainy_labour_expense = form.Section_IV_ProductionAreas.baseline_rainy_season_questions.repeat_baseline_rainseason_crops.expense_on_labor_rain_season_baseline,
+         rainy_other_expense = form.Section_IV_ProductionAreas.baseline_rainy_season_questions.repeat_baseline_rainseason_crops.expense_on_other_rain_season_baseline,
+         rainy_pesticide_expense = form.Section_IV_ProductionAreas.baseline_rainy_season_questions.repeat_baseline_rainseason_crops.expense_on_pesticidas_rain_season_baseline) %>% 
+  
+  mutate(across(c(rainy_qty_crops_produced, rainy_cropland_ha, rainy_qty_crops_sold, rainy_number_family_labour,rainy_number_paid_labour,rainy_days_per_week_fieldwork, rainy_hours_per_day_fieldwork, rainy_assist_days_perweek_fieldwork, rainy_assist_hoursper_fieldwork, rainy_paidlabour_days_perweek_fieldwork,
+                  rainy_paidlabour_hours_per_fieldwork,rainy_price_per_unit_sold, rainy_seed_expense,rainy_equipment_expense, rainy_fert_expense,rainy_labour_expense,rainy_other_expense,rainy_pesticide_expense), as.numeric)) %>% 
+  
+  ## Calculating  Labour days and productivity for the rainy season
+  
+  mutate(rainy_total_weeks_fieldwork = rowSums(across(c(rainy_days_per_week_fieldwork,rainy_assist_days_perweek_fieldwork,rainy_paidlabour_days_perweek_fieldwork))),
+         unit_kg = sapply(form.Section_IV_ProductionAreas.baseline_rainy_season_questions.repeat_baseline_rainseason_crops.unit_measure_produce_rain_season_baseline, extract_kg),
+         rainy_qty_prod_kg = ifelse(is.na(unit_kg),0,rainy_qty_crops_produced * unit_kg),
+         rainy_personallabour_time= rainy_days_per_week_fieldwork*rainy_hours_per_day_fieldwork,
+         rainy_assistedlabour_time = rainy_assist_days_perweek_fieldwork * rainy_assist_hoursper_fieldwork*rainy_number_family_labour,
+         rainy_paidlabour_time = rainy_paidlabour_days_perweek_fieldwork * rainy_paidlabour_hours_per_fieldwork*rainy_number_paid_labour,
+         rainy_personallabour_days = (rainy_personallabour_time*number_rainy_season_weeks)/Standard_workhours,
+         rainy_assistedlabour_days = (rainy_assistedlabour_time*number_rainy_season_weeks)/Standard_workhours,
+         rainy_paidlabour_days = (rainy_paidlabour_time*number_rainy_season_weeks)/Standard_workhours,
+         rainy_total_labour_days = rowSums(across(c(rainy_personallabour_days, rainy_assistedlabour_days, rainy_paidlabour_days))),
+         sale_unit_kg = sapply(form.Section_IV_ProductionAreas.baseline_rainy_season_questions.repeat_baseline_rainseason_crops.unit_measure_baseline_sold_rainseason, extract_kg),
+         rainy_qty_sold_kg = ifelse(is.na(sale_unit_kg),0,rainy_qty_crops_sold * sale_unit_kg),
+         rainy_crops_income = rainy_qty_sold_kg*rainy_price_per_unit_sold,
+         rainy_productivity = (rainy_qty_prod_kg*rainy_price_per_unit_sold)/rainy_total_labour_days,
+         rainy_total_expense = rowSums(across(c(rainy_seed_expense,rainy_pesticide_expense,rainy_fert_expense,rainy_equipment_expense,rainy_other_expense,rainy_labour_expense))),
+         rainy_crop_yield = rainy_qty_prod_kg/rainy_cropland_ha,
+         rainy_gross_agric_income = rainy_crops_income - rainy_total_expense)
+
+## Productivity in rainy season
+
+total_rainy_crop_income <-sum(Baseline_rainy$rainy_crops_income)
+# print(paste("Total rainy season income for the population is", total_rainy_crop_income))
+
+## Agriculture gross income in rainy season
+
+agric_gross_rainseason <- sum(Baseline_rainy$rainy_gross_agric_income)
+# print(paste("Total rainy season gross income for the population is", agric_gross_rainseason))
+
+## Grouping data for merging
+Baseline_rainy_grouped <- Baseline_rainy %>% 
+  select(rainy_qty_sold_kg, rainy_price_per_unit_sold, rainy_qty_prod_kg, rainy_cropland_ha, formid, rainy_total_weeks_fieldwork,rainy_personallabour_time, rainy_assistedlabour_time, rainy_paidlabour_time, rainy_personallabour_days,
+         rainy_assistedlabour_days,rainy_paidlabour_days,rainy_total_labour_days, rainy_crops_income, rainy_productivity, rainy_total_expense,
+         rainy_crop_yield, rainy_gross_agric_income) %>% 
+  group_by(formid) %>%
+  summarise(across(where(is.numeric),  \(x) sum(x, na.rm = TRUE)), .groups = "drop")
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+### Agroforestry indicators
+## Importing data
+
+Agroforestry_repeat_Survey <- read_excel("Mangwana - Baseline Survey.xlsx", 
+                                         sheet = "Repeat- product_silviculture")
+
+## Selecting a subset of data 
+Baseline_drought_agroforestry <- Agroforestry_repeat_Survey %>% 
+  
+  
+  
+  inner_join(Mangwana_Baseline_Survey %>%  select(formid,form.Section_IV_ProductionAreas.que_tipo_de_inqurito_est_a_realizar), by = c("formid" = "formid")) %>% 
+  
+  filter(form.Section_IV_ProductionAreas.que_tipo_de_inqurito_est_a_realizar == "inqurito_de_base_para_as_duas_ltimas_pocas") %>% 
+  
+  mutate(across(everything(), ~ case_when(. == "---" ~ "0",
+                                          . == " " ~ "0",
+                                          is.na(.) ~ "0",
+                                          TRUE ~ as.character(.)))) %>% 
+  
+  rename(agro_sale_price = form.Section_IV_ProductionAreas.Section_IV_III_Silviculture.product_silviculture.sale_price_silviculture,
+         agro_crops_produced = form.Section_IV_ProductionAreas.Section_IV_III_Silviculture.product_silviculture.que_quantidade_de_produto_em_unidade_de_medida_produziu_na_ltima_poca,
+         agro_crop_ha = form.Section_IV_ProductionAreas.Section_IV_III_Silviculture.product_silviculture.land_production_silviculture,
+         agro_qty_sold = form.Section_IV_ProductionAreas.Section_IV_III_Silviculture.product_silviculture.qty_sold_silviculture,
+         seed_cost = form.Section_IV_ProductionAreas.Section_IV_III_Silviculture.product_silviculture.expenditures_sementes_silviculture,
+         pesticide_cost = form.Section_IV_ProductionAreas.Section_IV_III_Silviculture.product_silviculture.expenditures_pesticidas_silviculture,
+         fert_cost = form.Section_IV_ProductionAreas.Section_IV_III_Silviculture.product_silviculture.expenditures_fertilizantes_silviculture,
+         labour_cost = form.Section_IV_ProductionAreas.Section_IV_III_Silviculture.product_silviculture.expenditures_labor_silviculture,
+         equipment_expense = form.Section_IV_ProductionAreas.Section_IV_III_Silviculture.product_silviculture.expenditures_equipment_silviculture,
+         other_expense = form.Section_IV_ProductionAreas.Section_IV_III_Silviculture.product_silviculture.expenditures_other_silviculture,
+         forest_daysperweek_work = form.Section_IV_ProductionAreas.Section_IV_III_Silviculture.product_silviculture.quantos_dias_por_semana_voc_trabalhou_para_silvicultura,
+         forest_hoursperweek_work = form.Section_IV_ProductionAreas.Section_IV_III_Silviculture.product_silviculture.quantas_horas_por_dia_voc_trabalhou_para_silvicultura,
+         forest_number_family_labour = form.Section_IV_ProductionAreas.Section_IV_III_Silviculture.product_silviculture.quantos_membros_da_famlia_ajudaram_voc_se_aplicvel_tambm_inclua_seu_parceir,
+         forest_assist_daysperweek_work = form.Section_IV_ProductionAreas.Section_IV_III_Silviculture.product_silviculture.em_mdia_quantos_dias_por_semana_eles_ajudaram_voc,
+         forest_number_permanent_labour = form.Section_IV_ProductionAreas.Section_IV_III_Silviculture.product_silviculture.quantos_trabalhadores_permanente_voc_contratou,
+         forest_permanent_hoursperweek_work = form.Section_IV_ProductionAreas.Section_IV_III_Silviculture.product_silviculture.em_mdia_quantas_horas_por_dia_eles_trabalharam_para_voc,
+         forest_permanent_daysperweek_work = form.Section_IV_ProductionAreas.Section_IV_III_Silviculture.product_silviculture.em_mdia_por_quantos_dias_por_semana_voc_os_contratou,
+         forest_number_seasonal_labour = form.Section_IV_ProductionAreas.Section_IV_III_Silviculture.product_silviculture.quantos_trabalhadores_sazonais_voc_contratou,
+         forest_seasonal_daysperweek_work = `form.Section_IV_ProductionAreas.Section_IV_III_Silviculture.product_silviculture.copy-1-of-em_mdia_por_quantos_dias_por_semana_voc_os_contratou`) %>% 
+  
+  mutate(across(c(agro_crop_ha,agro_sale_price,agro_crops_produced,agro_qty_sold,seed_cost,forest_number_family_labour,forest_number_permanent_labour,forest_number_seasonal_labour, pesticide_cost,fert_cost,labour_cost,equipment_expense,other_expense,forest_daysperweek_work,
+                  forest_hoursperweek_work,forest_permanent_hoursperweek_work,forest_permanent_daysperweek_work,forest_seasonal_daysperweek_work,forest_assist_daysperweek_work),as.numeric)) %>% 
+  
+  # Calculating productivity and gross income for Agroforestry
+  mutate(agro_unit_kg = sapply(form.Section_IV_ProductionAreas.Section_IV_III_Silviculture.product_silviculture.unit_measure_production_silviculture, extract_kg),
+         agro_qty_prod_kg = ifelse(is.na(agro_unit_kg),0,agro_crops_produced * agro_unit_kg),
+         agrosale_unit_kg = sapply(form.Section_IV_ProductionAreas.Section_IV_III_Silviculture.product_silviculture.unit_measure_sale_silviculture, extract_kg),
+         agro_qty_sold_kg = ifelse(is.na(agrosale_unit_kg),0,agro_qty_sold * agrosale_unit_kg),
+    forest_crop_income = agro_sale_price * agro_qty_sold_kg,
+         forest_total_expenses = rowSums(across(c(seed_cost,pesticide_cost,fert_cost,labour_cost,equipment_expense,other_expense))),
+         forest_gross_income = forest_crop_income - forest_total_expenses,
+         forest_personallabour_time = forest_daysperweek_work*forest_hoursperweek_work,
+         forest_assistedlabour_time = forest_assist_daysperweek_work *Standard_workhours* forest_number_family_labour, ## No indicator on hours worked, so I used standard hours
+         forest_permantlabr_time = forest_permanent_hoursperweek_work * forest_permanent_daysperweek_work * forest_number_permanent_labour,
+         forest_seasonallabr_time = forest_seasonal_daysperweek_work * Standard_workhours*forest_number_seasonal_labour,## No indicator on hours worked, so I used standard hours
+         forest_totallabr_days = rowSums(across(c(forest_personallabour_time,forest_assistedlabour_time,forest_permantlabr_time,forest_seasonallabr_time))),
+         forest_productivity = ifelse(forest_totallabr_days == 0, 0, (agro_qty_prod_kg * agro_sale_price) / forest_totallabr_days))
+
+
+## Agroforestry gross income
+
+agroforestry_gross <- sum(Baseline_drought_agroforestry$forest_gross_income)
+# print(paste("Gross agroforestry income for the population is", agroforestry_gross))
+
+## Grouping data for merging
+Baseline_dry_forestry_grouped <- Baseline_drought_agroforestry %>% 
+  select(agro_crop_ha,agro_sale_price, agro_qty_prod_kg, agro_qty_sold_kg, formid, forest_crop_income, forest_total_expenses, forest_gross_income, forest_personallabour_time, forest_assistedlabour_time,
+         forest_permantlabr_time, forest_seasonallabr_time, forest_totallabr_days, forest_productivity) %>% 
+  group_by(formid) %>%
+  summarise(across(where(is.numeric),  \(x) sum(x, na.rm = TRUE)), .groups = "drop")
+
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+### Livestock indicators
+## Importing data
+
+Animal_repeat_Survey <- read_excel("Mangwana - Baseline Survey.xlsx",
+                                   sheet = "Repeat- Animals_Raised")
+
+Baseline_drought_animals <- Animal_repeat_Survey %>% 
+  
+  
+  inner_join(Mangwana_Baseline_Survey %>%  select(formid,form.Section_IV_ProductionAreas.que_tipo_de_inqurito_est_a_realizar,form.Section_IV_ProductionAreas.Section_IV_IV_Livestock.quantos_dias_por_semana_voc_trabalhou_na_pecuaria,
+                                                  form.Section_IV_ProductionAreas.Section_IV_IV_Livestock.quantas_horas_por_dia_voc_trabalhou_na_pecuaria,form.Section_IV_ProductionAreas.Section_IV_IV_Livestock.question21,
+                                                  form.Section_IV_ProductionAreas.Section_IV_IV_Livestock.em_mdia_quantos_dias_por_semana_eles_ajudaram_voc,form.Section_IV_ProductionAreas.Section_IV_IV_Livestock.em_mdia_quantas_horas_por_dia_eles_ajudaram_voc,
+                                                  form.Section_IV_ProductionAreas.Section_IV_IV_Livestock.quantos_trabalhadores_permanente_voc_contratou,
+                                                  form.Section_IV_ProductionAreas.Section_IV_IV_Livestock.em_mdia_por_quantos_dias_por_semana_voc_os_contratou,`form.Section_IV_ProductionAreas.Section_IV_IV_Livestock.copy-1-of-em_mdia_quantas_horas_por_dia_eles_trabalharam_para_voc`,
+                                                  form.Section_IV_ProductionAreas.Section_IV_IV_Livestock.em_mdia_quantas_horas_por_dia_eles_trabalharam_para_voc,form.Section_IV_ProductionAreas.Section_IV_IV_Livestock.quantos_trabalhadores_sazonais_voc_contratou,
+                                                  `form.Section_IV_ProductionAreas.Section_IV_IV_Livestock.copy-1-of-em_mdia_por_quantos_dias_por_semana_voc_os_contratou`), by = c("formid" = "formid")) %>% 
+  
+  filter(form.Section_IV_ProductionAreas.que_tipo_de_inqurito_est_a_realizar == "inqurito_de_base_para_as_duas_ltimas_pocas") %>% 
+  
+  mutate(across(everything(), ~ case_when(. == "---" ~ "0",
+                                          . == " " ~ "0",
+                                          is.na(.) ~ "0",
+                                          TRUE ~ as.character(.)))) %>%
+  
+  rename(livestock_qty_sold = form.Section_IV_ProductionAreas.Section_IV_IV_Livestock.Animals_Raised.qty_sale_livestock,
+         qty_production_livestock = form.Section_IV_ProductionAreas.Section_IV_IV_Livestock.Animals_Raised.qty_production_livestock,
+         price_livestock = form.Section_IV_ProductionAreas.Section_IV_IV_Livestock.Animals_Raised.price_livestock,
+         livestock_feeding_expense = form.Section_IV_ProductionAreas.Section_IV_IV_Livestock.Animals_Raised.expenditures_feeding_livestock,
+         livestock_labour_expense =  form.Section_IV_ProductionAreas.Section_IV_IV_Livestock.Animals_Raised.expenditures_labor_livestock,
+         livestock_medical_expense = form.Section_IV_ProductionAreas.Section_IV_IV_Livestock.Animals_Raised.expenditures_medication_livestock,
+         livestock_equipment_expense = form.Section_IV_ProductionAreas.Section_IV_IV_Livestock.Animals_Raised.expenditures_equipment_livestock,
+         livestock_maintain_expense = form.Section_IV_ProductionAreas.Section_IV_IV_Livestock.Animals_Raised.expenditures_other_livestock,
+         livestock_days_of_work = form.Section_IV_ProductionAreas.Section_IV_IV_Livestock.quantos_dias_por_semana_voc_trabalhou_na_pecuaria,
+         livestock_hours_per_day = form.Section_IV_ProductionAreas.Section_IV_IV_Livestock.quantas_horas_por_dia_voc_trabalhou_na_pecuaria,
+         livestock_number_assisted_workers = form.Section_IV_ProductionAreas.Section_IV_IV_Livestock.question21,
+         livestock_assisted_days_of_work = form.Section_IV_ProductionAreas.Section_IV_IV_Livestock.em_mdia_quantos_dias_por_semana_eles_ajudaram_voc,
+         livestock_assisted_hours_of_work = form.Section_IV_ProductionAreas.Section_IV_IV_Livestock.em_mdia_quantas_horas_por_dia_eles_ajudaram_voc,
+         livestock_number_permanent_workers = form.Section_IV_ProductionAreas.Section_IV_IV_Livestock.quantos_trabalhadores_permanente_voc_contratou,
+         livestock_permanent_days_of_work = form.Section_IV_ProductionAreas.Section_IV_IV_Livestock.em_mdia_por_quantos_dias_por_semana_voc_os_contratou,
+         livestock_permanent_hours_of_work = form.Section_IV_ProductionAreas.Section_IV_IV_Livestock.em_mdia_quantas_horas_por_dia_eles_trabalharam_para_voc,
+         livestock_number_seasonal_workers = form.Section_IV_ProductionAreas.Section_IV_IV_Livestock.quantos_trabalhadores_sazonais_voc_contratou,
+         livestock_seasonal_days_of_work = `form.Section_IV_ProductionAreas.Section_IV_IV_Livestock.copy-1-of-em_mdia_por_quantos_dias_por_semana_voc_os_contratou`,
+         livestock_seasonal_hours_of_work = `form.Section_IV_ProductionAreas.Section_IV_IV_Livestock.copy-1-of-em_mdia_quantas_horas_por_dia_eles_trabalharam_para_voc`) %>%
+  mutate(across(c(qty_production_livestock, livestock_qty_sold,price_livestock,livestock_feeding_expense, livestock_labour_expense, livestock_medical_expense, livestock_equipment_expense, livestock_maintain_expense,
+                  livestock_days_of_work,livestock_hours_per_day,livestock_number_assisted_workers,livestock_assisted_days_of_work,livestock_assisted_hours_of_work,
+                  livestock_number_permanent_workers,livestock_permanent_days_of_work,livestock_permanent_hours_of_work,livestock_number_seasonal_workers,
+                  livestock_seasonal_days_of_work,livestock_seasonal_hours_of_work), as.numeric),
+         ## Calculating productivity and gross income for livestock
+         livestock_income = livestock_qty_sold * price_livestock,
+         livestock_total_expense = rowSums(across(c(livestock_feeding_expense,livestock_labour_expense, livestock_medical_expense,livestock_equipment_expense, livestock_maintain_expense))),
+         gross_livestock_income = livestock_income - livestock_total_expense,
+         livestock_personallabour_time = livestock_days_of_work * livestock_hours_per_day,
+         livestock_assistedlabour_time = livestock_number_assisted_workers * livestock_assisted_days_of_work * livestock_assisted_hours_of_work,
+         livestock_permanentlabour_time = livestock_number_permanent_workers * livestock_permanent_days_of_work * livestock_permanent_hours_of_work,
+         livestock_seasonallabour_time = livestock_number_seasonal_workers * livestock_seasonal_days_of_work * livestock_seasonal_hours_of_work,
+         total_livestock_labour_time = rowSums(across(c(livestock_personallabour_time,livestock_assistedlabour_time,livestock_permanentlabour_time))),
+         livestock_productivity = ifelse(total_livestock_labour_time == 0,0, (qty_production_livestock * livestock_qty_sold) /total_livestock_labour_time))
+
+
+
+gross_livestock <- sum(Baseline_drought_animals$livestock_income)
+# print(paste("Gross livestock income for the population is", gross_livestock))
+
+## Grouping data for merging
+Baseline_dry_animals_grouped <- Baseline_drought_animals %>% 
+  select(qty_production_livestock, livestock_qty_sold, price_livestock, formid, livestock_income, livestock_total_expense, gross_livestock_income, livestock_personallabour_time, livestock_assistedlabour_time,
+         livestock_permanentlabour_time, livestock_seasonallabour_time, total_livestock_labour_time, livestock_productivity) %>% 
+  group_by(formid) %>%
+  summarise(across(where(is.numeric),  \(x) sum(x, na.rm = TRUE)), .groups = "drop")
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+### Fish farming
+Fish_repeat_Survey <- read_excel("Mangwana - Baseline Survey.xlsx",
+                                 sheet = "Repeat- type_fish")
+
+
+Baseline_drought_fish <- Fish_repeat_Survey %>% 
+  
+  
+  inner_join(Mangwana_Baseline_Survey %>%  select(formid,form.Section_IV_ProductionAreas.que_tipo_de_inqurito_est_a_realizar), by = c("formid" = "formid")) %>% 
+  
+  filter(form.Section_IV_ProductionAreas.que_tipo_de_inqurito_est_a_realizar == "inqurito_de_base_para_as_duas_ltimas_pocas") %>% 
+  
+  mutate(across(everything(), ~ case_when(. == "---" ~ "0",
+                                          . == " " ~ "0",
+                                          is.na(.) ~ "0",
+                                          TRUE ~ as.character(.)))) %>%
+  
+  rename(fish_qty_produced = form.Section_IV_ProductionAreas.Section_IV_V_FishFarming.type_fish.qty_production_Aquaculture,
+         fish_qty_sold = form.Section_IV_ProductionAreas.Section_IV_V_FishFarming.type_fish.qty_sold_Aquaculture,
+         fish_price = form.Section_IV_ProductionAreas.Section_IV_V_FishFarming.type_fish.fish_price_perunit,
+         fish_installation_expense = form.Section_IV_ProductionAreas.Section_IV_V_FishFarming.type_fish.quanto_gastou_no_ltimo_ano_com_os_custos_de_instalaes_em_mzn_na_produo_de_p,
+         fish_facilities_cost = form.Section_IV_ProductionAreas.Section_IV_V_FishFarming.type_fish.expenditures_facilities_Aquaculture,
+         fish_equipment_expense = form.Section_IV_ProductionAreas.Section_IV_V_FishFarming.type_fish.expenditures_equipment_Aquaculture,
+         fingerlings_expense = form.Section_IV_ProductionAreas.Section_IV_V_FishFarming.type_fish.expenditures_fingerlings_Aquaculture,
+         fish_labour_cost = form.Section_IV_ProductionAreas.Section_IV_V_FishFarming.type_fish.expenditures_labor_Aquaculture,
+         fish_maintenance_cost = form.Section_IV_ProductionAreas.Section_IV_V_FishFarming.type_fish.expenditures_other_Aquaculture,
+         fish_days_of_work = form.Section_IV_ProductionAreas.Section_IV_V_FishFarming.type_fish.quantos_dias_por_semana_voc_trabalhou_para_piscicultura,
+         fish_hours_of_work =form.Section_IV_ProductionAreas.Section_IV_V_FishFarming.type_fish.quantas_horas_por_dia_voc_trabalhou_para_piscicultura,
+         fish_number_assisted_work = form.Section_IV_ProductionAreas.Section_IV_V_FishFarming.type_fish.se_sim_quantos_membros_da_famlia_ajudaram_voc_se_aplicvel_tambm_inclua_seu_,
+         fish_assisted_days_work =form.Section_IV_ProductionAreas.Section_IV_V_FishFarming.type_fish.se_sim_em_mdia_quantos_dias_por_semana_eles_ajudaram_voc,
+         fish_assisted_hours_work = form.Section_IV_ProductionAreas.Section_IV_V_FishFarming.type_fish.se_sim_em_mdia_quantas_horas_por_dia_eles_ajudaram_voc,
+         fish_number_permanent_work = form.Section_IV_ProductionAreas.Section_IV_V_FishFarming.type_fish.quantos_trabalhadores_permanente_voc_contratou,
+         fish_permanent_days_work = form.Section_IV_ProductionAreas.Section_IV_V_FishFarming.type_fish.em_mdia_por_quantos_dias_por_semana_voc_os_contratou,
+         fish_permanent_hours_work = form.Section_IV_ProductionAreas.Section_IV_V_FishFarming.type_fish.em_mdia_quantas_horas_por_dia_eles_trabalharam_para_voc,
+         fish_number_seasonal_work = form.Section_IV_ProductionAreas.Section_IV_V_FishFarming.type_fish.quantos_trabalhadores_sazonais_voc_contratou,
+         fish_seasonal_days_work = `form.Section_IV_ProductionAreas.Section_IV_V_FishFarming.type_fish.copy-1-of-em_mdia_por_quantos_dias_por_semana_voc_os_contratou`,
+         fish_seasonal_hours_work = `form.Section_IV_ProductionAreas.Section_IV_V_FishFarming.type_fish.copy-1-of-em_mdia_quantas_horas_por_dia_eles_trabalharam_para_voc`) %>%
+  
+  mutate(across(c(fish_qty_produced,fish_qty_sold,fish_price, fish_installation_expense,fish_facilities_cost,fish_equipment_expense,fingerlings_expense,fish_days_of_work,
+                  fish_hours_of_work, fish_number_assisted_work, fish_assisted_days_work,fish_assisted_hours_work,fish_labour_cost,fish_maintenance_cost,fish_number_permanent_work,
+                  fish_permanent_days_work,fish_permanent_hours_work,fish_number_seasonal_work,fish_seasonal_days_work,fish_seasonal_hours_work),as.numeric),
+         # Calculating productivity and gross income for fisheries      
+         fish_income = fish_price * fish_qty_sold,
+         fish_total_expenses = rowSums(across(c(fish_installation_expense,fish_facilities_cost,fish_equipment_expense, fingerlings_expense,fish_labour_cost,
+                                                fish_maintenance_cost))),
+         fish_gross_income = fish_income * fish_total_expenses,
+         fish_personallabour_time = fish_days_of_work * fish_hours_of_work,
+         fish_assistedlabour_time = fish_number_assisted_work * fish_assisted_days_work * fish_assisted_hours_work,
+         fish_permanentlabour_time = fish_number_permanent_work * fish_permanent_days_work * fish_permanent_hours_work,
+         fish_seasonallabour_time = fish_number_seasonal_work * fish_seasonal_days_work * fish_seasonal_hours_work,
+         fish_totallabr_days = rowSums(across(c(fish_personallabour_time,fish_assistedlabour_time,fish_permanentlabour_time,fish_seasonallabour_time))),
+         fish_productivity = ifelse(fish_totallabr_days == 0, 0, (fish_qty_produced * fish_price) / fish_totallabr_days)) 
+
+Gross_income_fish <- sum(Baseline_drought_fish$fish_gross_income)
+# print(paste("Gross fish income for the population is", Gross_income_fish))
+
+## Grouping data for merging
+Baseline_dry_fish_grouped <- Baseline_drought_fish %>% 
+  select(fish_qty_produced, fish_qty_sold, fish_price, formid, fish_income, fish_total_expenses, fish_gross_income, fish_personallabour_time, fish_assistedlabour_time, fish_permanentlabour_time,
+         fish_seasonallabour_time, fish_totallabr_days, fish_productivity) %>% 
+  group_by(formid) %>%
+  summarise(across(where(is.numeric),  \(x) sum(x, na.rm = TRUE)), .groups = "drop")
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+## Household decision indicators
+## Importing data
+
+Mangwana_Baseline_decisions <- read_excel("Mangwana - Baseline Survey.xlsx", 
+                                          sheet = "Repeat- papel_...produo_e_renda")
+
+## Selecting a subset of data 
+Baseline_decisions <- Mangwana_Baseline_decisions %>% 
+  
+  
+  
+  mutate(across(everything(), ~ case_when(. == "---" ~ "0",
+                                          . == " " ~ "0",
+                                          is.na(.) ~ "0",
+                                          TRUE ~ as.character(.)))) %>% 
+  
+  rename(extent_of_participation = form.seco_vi_papel_na_tomada_de_decises_no_lar_em_relao__produo_e_renda.seco_vi_papel_na_tomada_de_decises_no_lar_em_relao__produo_e_renda.papel_na_tomada_de_decises_no_lar_em_relao__produo_e_renda.em_que_medida_participou_na_tomada_de_decises_sobre_participou_nas_seguinte,
+         extent_able_to_participate = form.seco_vi_papel_na_tomada_de_decises_no_lar_em_relao__produo_e_renda.seco_vi_papel_na_tomada_de_decises_no_lar_em_relao__produo_e_renda.papel_na_tomada_de_decises_no_lar_em_relao__produo_e_renda.em_que_medida_sente_que_pode_participar_das_decises_sobre_participou_nas_se,
+         decision_product_quantity = form.seco_vi_papel_na_tomada_de_decises_no_lar_em_relao__produo_e_renda.seco_vi_papel_na_tomada_de_decises_no_lar_em_relao__produo_e_renda.papel_na_tomada_de_decises_no_lar_em_relao__produo_e_renda.qual_foi_a_sua_participao_nas_decises_sobre_a_quantidade_de_produtos_de_par,
+         decision_income_utilization = form.seco_vi_papel_na_tomada_de_decises_no_lar_em_relao__produo_e_renda.seco_vi_papel_na_tomada_de_decises_no_lar_em_relao__produo_e_renda.papel_na_tomada_de_decises_no_lar_em_relao__produo_e_renda.em_que_medida_participou_nas_decises_sobre_a_forma_de_utilizar_o_rendimento) %>%
+  
+  select(-c(number,number__1,form.seco_vi_papel_na_tomada_de_decises_no_lar_em_relao__produo_e_renda.seco_vi_papel_na_tomada_de_decises_no_lar_em_relao__produo_e_renda.papel_na_tomada_de_decises_no_lar_em_relao__produo_e_renda.Current_participou)) %>% 
+  
+  mutate(across(c(extent_of_participation,extent_able_to_participate,decision_product_quantity,decision_income_utilization),~case_when(.%in% c("participao_na_maioria_ou_em_todas_as_decises", "PARTICIPAÇÃO_EM_ALGUMAS_DECISÕES")~ 2,.%in% c("participao_na_maioria_ou_em_todas_as_decises", "participao_em_algumas_decises")~ 3, .%in% c("pouca_ou_nenhuma_participao_nas_decises", "no_aplicvel__nenhuma_deciso_tomada") ~ 0, TRUE ~ as.numeric(.))),## Creating binaries for the choices.
+         #summed_decisions = rowSums(across(c(extent_of_participation,extent_able_to_participate,decision_product_quantity,decision_income_utilization))),
+         ## Calculating binaries for various input in livelihood and income decision making. 
+         extent_participation_binary = ifelse(extent_of_participation >= 2, 1,0),
+         able_to_participate_binary = ifelse(extent_able_to_participate >= 3, 1,0),
+         product_quantity_binary = ifelse(decision_product_quantity >=2, 1,0),
+         income_utilization_binary = ifelse(decision_income_utilization >= 2, 1,0),
+         input_decision_adequacy = extent_participation_binary + able_to_participate_binary,
+         income_decision_adequacy = product_quantity_binary + income_utilization_binary) %>%
+  group_by(formid) %>%
+  summarise(across(where(is.numeric),  \(x) sum(x, na.rm = TRUE)), .groups = "drop") %>% 
+  ## Calculating final input livelihood decisions adequacy. 
+  mutate(input_adequacy_binary = ifelse(input_decision_adequacy >0, 1,0),
+         
+         ## Calculating final control over income use adequacy
+         income_adequacy_binary = ifelse(income_decision_adequacy >0, 1,0))
+
+# Calculating number of people with input adequacy
+input_adequacy = sum(Baseline_decisions$input_adequacy_binary)
+# print(paste("Number of people who make adequate decisions on input within the population is", input_adequacy))
+
+# Calculating number of people with income adequacy
+income_adequacy = sum(Baseline_decisions$income_adequacy_binary)
+# print(paste("Number of people who make adequate decisions on income within the population is", income_adequacy))
+  
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+## Using the Mangwana baseline data imported above to calculate resilience to shock among others (Section 6)
+Baseline_data <- Baseline_drought_data %>%
+  filter(form.Section_IV_ProductionAreas.que_tipo_de_inqurito_est_a_realizar == "inqurito_de_base_para_as_duas_ltimas_pocas") %>% 
+  mutate(weather_warning = `form.Section_VII_ResilienceShocks_group.warnings_weather_or_nature-related_issues`,
+         harvest_storage = form.Section_VII_ResilienceShocks_group.A_place_to_store_your_harvest,
+         other_income_source = form.Section_VII_ResilienceShocks_group.what_else_do_you_do_to_support_your_family,
+         financial_insurance = form.Section_VII_ResilienceShocks_group.in_case_of_production_losses,
+         ability_dealing_shocks = form.Section_VII_ResilienceShocks_group.assess_ability_to_cope_with_shocks_livelihood,
+         crop_rotation_conservation = form.Section_VIII_Conservation_Practises_group.quais_prticas_de_conservao_oa_senhora_implementa_na_sua_machamba,
+         crop_rotation_binary = ifelse(grepl("rotao_de_culturas",crop_rotation_conservation),1,0),
+         across(c(weather_warning,harvest_storage,other_income_source,financial_insurance,ability_dealing_shocks), ~ ifelse(. == "sim", 1,0)),
+         total_resilience = rowSums(across(c(weather_warning,harvest_storage,other_income_source,financial_insurance,ability_dealing_shocks,crop_rotation_binary))),
+         resilience = ifelse(total_resilience >= 3,1,0))
+
+## Counting respondents who meet resilience to shock criteria
+
+Resilience_to_shock <- sum(Baseline_data$resilience)
+# print(paste("Number of people with adequate level of resilience to shock in the population is", Resilience_to_shock))   
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+### Merging data for sub group analyses
+Mangwana_baseline_merged <- Baseline_drought_data %>% 
+  left_join(Selected_Child_indicators %>%  select(formid,dds,all_5,ncd_protect,ncd_risk,gdr_score), by = c("formid" = "formid")) %>% 
+  left_join(Selected_adult_indicators %>%  select(formid,adult_dds,adult_dss_binary,grains,pulses, nuts, diary, meat_fish, dark_leafy_veg,egg, vitamin_A_veg, vitamin_A_fruit, other_fruit, adult_all_5,adult_all_5_binary,adult_ncd_protect,adult_ncd_protect_binary, adult_ncd_risk,adult_ncd_risk_binary, adult_gdr_score, carbs, fruit, vegetable, proteins, pulse), by = c("formid" = "formid")) %>% 
+  left_join(Resilience %>%  select(formid,MAHFP,hhs_score,hunger_scores), by = c("formid" = "formid")) %>% 
+  left_join(Baseline_drought_grouped %>%  select(qty_sold_kg,price_per_unit_sold,qty_prod_kg, cropland_ha, formid, personallabour_time,assistedlabour_time,personallabour_days,assistedlabour_days,paidlabour_days,total_labour_days, crops_income,productivity,total_expense,crop_yield,gross_agric_income), by = c("formid" = "formid")) %>% 
+  left_join(Baseline_rainy_grouped %>%  select(rainy_qty_sold_kg, rainy_price_per_unit_sold,rainy_qty_prod_kg, rainy_cropland_ha, formid, rainy_total_weeks_fieldwork,rainy_personallabour_time, rainy_assistedlabour_time, rainy_paidlabour_time, rainy_personallabour_days,rainy_assistedlabour_days,rainy_paidlabour_days,rainy_total_labour_days, rainy_crops_income, rainy_productivity, rainy_total_expense,rainy_crop_yield, rainy_gross_agric_income), by = c("formid" = "formid")) %>% 
+  left_join(Baseline_dry_forestry_grouped %>%  select(agro_crop_ha, agro_sale_price, agro_qty_sold_kg, agro_qty_prod_kg, formid, forest_crop_income, forest_total_expenses, forest_gross_income, forest_personallabour_time, forest_assistedlabour_time,forest_permantlabr_time, forest_seasonallabr_time, forest_totallabr_days, forest_productivity), by = c("formid" = "formid")) %>%
+  left_join(Baseline_dry_animals_grouped %>%  select(formid, livestock_income, livestock_total_expense, gross_livestock_income, livestock_personallabour_time, livestock_assistedlabour_time,livestock_permanentlabour_time, livestock_seasonallabour_time, total_livestock_labour_time, livestock_productivity), by = c("formid" = "formid")) %>%
+  left_join(Baseline_dry_fish_grouped %>%  select(fish_qty_produced, fish_qty_sold, fish_price, formid, fish_income, fish_total_expenses, fish_gross_income, fish_personallabour_time, fish_assistedlabour_time, fish_permanentlabour_time,fish_seasonallabour_time, fish_totallabr_days, fish_productivity), by = c("formid" = "formid")) %>% 
+  left_join(Baseline_decisions %>%  select(formid, input_decision_adequacy, income_decision_adequacy, input_adequacy_binary,income_adequacy_binary), by = c("formid" = "formid")) %>%
+  left_join(Baseline_data %>%  select(formid, total_resilience, resilience), by = c("formid" = "formid")) %>% 
+  mutate(total_gross_income = rowSums(across(c(gross_agric_income,rainy_gross_agric_income,forest_gross_income,gross_livestock_income,fish_gross_income), ~ replace_na(as.numeric(.), 0))))
+```
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+### Saving output into Excel file
+output_file <- "Mangwana_baseline_results.xlsx"
+
+if (file.exists(output_file)) {
+  file.remove(output_file)
+}
+
+write_xlsx(Mangwana_baseline_merged, output_file)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+### Nutrition analyses for adult subgroups
+
+#### Gender and age categorisation
+Mangwana_baseline_result <- read_excel("Mangwana_baseline_results.xlsx") %>% 
+  mutate(form.Section_I_group.Idade = as.numeric(form.Section_I_group.Idade),
+         age_group = case_when(is.na (form.Section_I_group.Idade) ~ "",
+                               form.Section_I_group.Idade < 18 ~ "< 18",
+                               form.Section_I_group.Idade <=35 ~ "18 - 35",
+                               form.Section_I_group.Idade > 35 ~ "> 35"),
+         age_mdd_calc = case_when(is.na (form.Section_I_group.Idade) ~ "",
+                                  form.Section_I_group.Idade < 15 ~ "< 15",
+                                  form.Section_I_group.Idade <=49 ~ "15 - 49",
+                                  form.Section_I_group.Idade > 49 ~ "> 49"),
+         total_productivity = rowSums(across(c(productivity, rainy_productivity, forest_productivity,
+                                               livestock_productivity, fish_productivity), ~ replace_na(.x, 0))),
+         PPP_gross_household = total_gross_income/ PPP,
+         PPP_per_day = PPP_gross_household / 365,# Calculating PPP per day to compare with  global threshold of 2.15$/day
+         total_agric_income = rowSums(across(c(crops_income, rainy_crops_income), ~ replace_na(.x, 0)))) %>% 
+  rename(gender = form.Section_I_group.Sexo) %>% 
+  mutate(gender = case_when(
+    gender == "feminino" ~ "female",
+    gender == "masculino" ~ "male",
+    TRUE ~ gender))
+```
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+### Saving final output into Excel file
+final_output_file <- "Mangwana_baseline_finalresult.xlsx"
+
+if (file.exists(final_output_file)) {
+  file.remove(final_output_file)
+}
+
+write_xlsx(Mangwana_baseline_result, final_output_file)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#### Calculating MDD-W percentage
+mdd_w <- Mangwana_baseline_result %>% 
+  filter(gender == "female", age_mdd_calc == "15 - 49")
+mean_mdd_w <- round(mean(mdd_w$adult_dds),1) # Calculating the average MDD-W score for the females between ages 15 and 49 years 
+# print(paste("Average MDD_W for the females between 15 and 49 is", mean_mdd_w))
+median_mdd_w <-median(mdd_w$adult_dds) # Calculating the median MDD-W score for the females between ages 15 and 49 years
+# print(paste("Medium MDD_W for the females between 15 and 49 is", median_mdd_w)) # the median is used to check for outlier; whether the median is far from the mean.
+
+mdd_w_percentage <- mdd_w %>% 
+  group_by(adult_dds) %>% 
+  summarise(mdd_w_category = n()) %>%
+  mutate (percentage = round(mdd_w_category / sum(mdd_w_category)*100))
+# print(mdd_w_percentage)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#### Percentage of adult GDR score per gender and age group
+gender_adult_gdr_percentage <- Mangwana_baseline_result %>%
+  filter(gender != "---") %>% 
+  group_by(adult_gdr_score,gender) %>% 
+  summarise(Count = n(), .groups = "drop") %>% 
+  mutate(Percentage = round((Count / sum(Count)) * 100, 1))
+
+age_adult_gdr_percentage <- Mangwana_baseline_result %>%
+  filter(gender != "---") %>% 
+  group_by(adult_gdr_score, age_group) %>% 
+  summarise(Count = n(), .groups = "drop") %>% 
+  mutate(Percentage = round((Count / sum(Count)) * 100, 1))
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#### DSS per gender and age group
+gender_dds_percentage <- Mangwana_baseline_result %>%
+  filter(gender != "---" ) %>% # , adult_dss_binary == 1
+  group_by(gender, adult_dss_binary) %>% 
+  summarise(dds_count = n(), .groups = "drop") %>%
+  mutate (percentage = round(dds_count / sum(dds_count)*100))
+# print(gender_dds_percentage)
+
+age_dds_percentage <- Mangwana_baseline_result %>%
+  filter(gender != "---") %>% #, adult_dss_binary == 1
+  group_by(age_group, adult_dss_binary) %>% 
+  summarise(dds_count = n(), .groups = "drop") %>%
+  mutate (percentage = round(dds_count / sum(dds_count)*100))
+# print(age_dds_percentage)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#### All 5 per gender and age group
+gender_all5_percentage <- Mangwana_baseline_result %>%
+  filter(gender != "---",  adult_all_5_binary ==1) %>% 
+  group_by(gender, adult_all_5_binary) %>% 
+  summarise(count = n(), .groups = "drop") %>%
+  mutate (percentage = round(count / sum(count)*100))
+# print(gender_all5_percentage)
+
+age_all5_percentage <- Mangwana_baseline_result %>%
+  filter(gender != "---", adult_all_5_binary ==1) %>% 
+  group_by(age_group, adult_all_5_binary) %>% 
+  summarise(count = n(), .groups = "drop") %>%
+  mutate (percentage = round(count / sum(count)*100))
+# print(age_all5_percentage)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#### NCD-protect per gender and age group
+gender_ncdprotect_percentage <- Mangwana_baseline_result %>%
+  filter(gender != "---",  adult_ncd_protect_binary ==1) %>% 
+  group_by(gender, adult_ncd_protect_binary) %>% 
+  summarise(ncdprotect_category = n(), .groups = "drop") %>%
+  mutate (percentage = round(ncdprotect_category / sum(ncdprotect_category)*100))
+# print(gender_ncdprotect_percentage)
+
+age_ncdprotect_percentage <- Mangwana_baseline_result %>%
+  filter(gender != "---", adult_ncd_protect_binary ==1) %>% 
+  group_by(age_group, adult_ncd_protect_binary) %>% 
+  summarise(ncdprotect_category = n(), .groups = "drop") %>%
+  mutate (percentage = round(ncdprotect_category / sum(ncdprotect_category)*100))
+# print(age_ncdprotect_percentage)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#### NCD-risk per gender and age group
+gender_ncdrisk_percentage <- Mangwana_baseline_result %>%
+  filter(gender != "---",  adult_ncd_risk_binary ==1) %>% 
+  group_by(gender, adult_ncd_risk_binary) %>% 
+  summarise(ncdrisk_category = n(), .groups = "drop") %>%
+  mutate (percentage = round(ncdrisk_category  / sum(ncdrisk_category )*100))
+# print(gender_ncdrisk_percentage)
+
+age_ncdrisk_percentage <- Mangwana_baseline_result %>%
+  filter(gender != "---", adult_ncd_risk_binary ==1) %>% 
+  group_by(age_group, adult_ncd_risk_binary) %>% 
+  summarise(ncdrisk_category  = n(), .groups = "drop") %>%
+  mutate (percentage = round(ncdrisk_category  / sum(ncdrisk_category )*100))
+# print(age_ncdrisk_percentage)
+```
+
+
+The number of respondents answering children DQQ questions: `r sum(Selected_Child_indicators$have_child)`
+
+The number of adults interviewed: `r nrow(Mangwana_Baseline_Survey)`
+
+The number of women interviewed: `r sum(Mangwana_baseline_result$gender == "female") `
+
+The number youth (18-35) interviewed: `r sum(Mangwana_baseline_result$age_group == "18 - 35")`
+
+
+# Number of people with diverse and adequate diet
+
+# Children
+
+## Ever breastfed
+
+The percentage of children ever-breastfed is: `r paste0(round(breastfeeding$percent_breastfed,1), "%") ` 
+
+## Early initiation of breastfeeding
+
+The percentage of children breastfed within first hour of birth is: `r paste(round(immbreastfeeding$percent_early_breastfed, 1), "%") ` 
+
+## DDS score
+
+The average DDS score out of 10 for the children population is: `r round(mean_dds_score, 1)`
+
+The distribution of DDS scores out of 10 for the children population is:
+```{r}
+dds_all <- Selected_Child_indicators %>%
+  filter(have_child == 1,breastfed == 0) %>%
+  group_by(dds) %>% 
+  summarise(count = n()) %>%
+  mutate (percentage = round(count / sum(count)*100))
+kable(dds_all, caption = "Percentage of children DDS score")
+
+ggplot(dds_all, aes(x= as.factor(dds), y = percentage, fill = as.factor(dds))) + 
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = round(percentage, 1)), 
+            vjust = -0.3,                        
+            size = 4) +
+  labs(title = "Percentage distribution of children DDS Scores",
+       x = "DDS scores",
+       y = "Percentage (%)", 
+       fill = "Scores") +
+  theme_minimal() +
+  scale_x_discrete(limits = as.character(seq(0, 10, 1)))   +
+  scale_y_continuous(limits = c(0, 100), breaks = seq(0, 100, 20)) +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    legend.position = "none"
+  )
+```
+```{r}
+dds_foodgroup <- Selected_Child_indicators %>%
+  filter(have_child == 1, breastfed == 0) %>%
+  select(dds, processed_porridge, unprocessed_porridge, root_crop_porridge,
+         beans, nuts, animal_milk, cheese, yoghurt,
+         meat, sausages, pork_rabbit, poultry, fish, shrimp_snails,
+         green_leafy_vegetables, leafy_vegetables,
+         eggs,
+         orange_vegetables, tomato_cabbage_mushroom, yellow_fruits, citrus, apples,
+         long_cycle_fruits) %>%
+  mutate(
+    grains = pmax(processed_porridge, unprocessed_porridge, root_crop_porridge),
+    pulses = beans,
+    nuts = nuts,
+    dairy = pmax(animal_milk, cheese, yoghurt),
+    meat_fish = pmax(meat, sausages, pork_rabbit, poultry, fish, shrimp_snails),
+    dark_leafy_veg = pmax(green_leafy_vegetables, leafy_vegetables),
+    egg = eggs,
+    vitamin_A_veg = pmax(orange_vegetables, tomato_cabbage_mushroom),
+    vitamin_A_fruit = pmax(yellow_fruits, citrus, apples),
+    other_fruit = long_cycle_fruits
+  ) %>%
+  select(dds, grains, pulses, nuts, dairy, meat_fish, dark_leafy_veg, egg, vitamin_A_veg, vitamin_A_fruit, other_fruit) %>%
+  pivot_longer(cols = -dds, names_to = "DSS_foodgroup", values_to = "Number") %>%
+  filter(Number == 1) %>%
+  group_by(dds, DSS_foodgroup) %>%
+  summarise(count = n(), .groups = 'drop') %>%
+  group_by(dds) %>%
+  mutate(
+    percentage = round(count / sum(count) * 100, 1),
+    pos = cumsum(percentage) - 0.5 * percentage
+  ) %>%
+  ungroup()
+
+ggplot(dds_foodgroup, aes(x = as.factor(dds), y = percentage, fill = DSS_foodgroup)) + 
+  geom_bar(stat = "identity") +
+  geom_text(aes(y = pos, label = percentage), color = "black", size = 3) +
+  labs(title = "Distribution of DDS scores per Food Group",
+       x = "DDS score",
+       y = "Percentage (%)",
+       fill = "Food group") +
+  theme_minimal() +
+  scale_x_discrete(limits = as.character(seq(0, 10, 1)))   +
+  scale_y_continuous(limits = c(0, 100), breaks = seq(0, 100, 10)) +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    legend.position = "right"
+  )
+```
+
+
+## All-5 score
+
+The percentage of the children's  population consuming all five recommended food groups the previous day or night:
+
+```{r}
+kable(all_5_percentage, caption = "Percentage of children all 5 score")
+ggplot(all_5_percentage, aes(x= as.factor(all_5), y = percentage, fill = as.factor(all_5))) + 
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = round(percentage, 1)), 
+            vjust = -0.3,                        
+            size = 4) +
+  labs(title = "Percentage distribution of children All - 5 scores",
+       x = "All 5 score",
+       y = "Percentage (%)", 
+       fill = "Scores") +
+  theme_minimal() + 
+  scale_x_discrete(limits = as.character(seq(0, 5, 1)))   +
+  scale_y_continuous(limits = c(0, 100), breaks = seq(0, 100, 20)) +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    legend.position = "none"
+  )
+```
+
+
+```{r}
+all5_foodgroup <- Selected_Child_indicators %>% 
+  filter(have_child == 1, breastfed == 0) %>%
+  mutate(starchy_staples = as.integer(rowSums(across(c(processed_porridge, unprocessed_porridge, root_crop_porridge)) == 1, na.rm = TRUE) > 0),
+    vegetables = as.integer(rowSums(across(c(green_leafy_vegetables, leafy_vegetables, orange_vegetables, tomato_cabbage_mushroom, salad_vegetables)) == 1, na.rm = TRUE) > 0),
+    fruits = as.integer(rowSums(across(c(yellow_fruits, citrus, long_cycle_fruits, apples)) == 1, na.rm = TRUE) > 0),
+    pulses_nuts_seeds = as.integer(rowSums(across(c(beans, nuts)) == 1, na.rm = TRUE) > 0),
+    animal_source_foods = as.integer(rowSums(across(c(animal_milk, yoghurt, eggs, cheese, sausages, meat, poultry, fish, shrimp_snails)) == 1, na.rm = TRUE) > 0)) %>% 
+  select(all_5, starchy_staples, vegetables, fruits, pulses_nuts_seeds, animal_source_foods) %>%
+  pivot_longer(cols = -all_5, names_to = "Food_group", values_to = "Number") %>%
+  filter(Number == 1) %>%
+  group_by(all_5, Food_group) %>%
+  summarise(count = n(), .groups = 'drop') %>%
+  group_by(all_5) %>%
+  mutate(
+    percentage = round(count / sum(count) * 100, 1),
+    pos = cumsum(percentage) - 0.5 * percentage
+  )
+ggplot(all5_foodgroup, aes(x = as.factor(all_5), y = percentage, fill = Food_group)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(y = pos, label = percentage)) +
+  labs(
+    title = "Percentage of children consuming All_5 food group",
+    x = "Food group",
+    y = "Percentage (%)"
+  ) +
+  theme_minimal() +
+  scale_x_discrete(limits = as.character(seq(0, 5, 1)))   +
+  scale_y_continuous(limits = c(0, 100), breaks = seq(0, 100, 10)) +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    legend.position = "right")
+```
+
+
+## NCD-Protect score
+
+The average NCD-Protect score out of 9 for the children population is: `r round(mean_ncd_protect_score, 1)`
+
+## NCD-Risk score
+
+The average NCD-Risk score out of 9 for the children population is: `r round(mean_ncd_risk_score, 1)`
+
+## GDR score
+
+The average GDR score out of 18 for the children population is: `r round(mean_gdr_score, 1)`
+
+The distribution of the GDR scores out of 18 is:
+```{r}
+kable(gdr_percentage, caption = "Percentage of children's GDR score")
+
+### Graphing the GDR score
+ggplot(gdr_percentage, aes(x= as.factor(gdr_score), y = Percentage, fill = as.factor(gdr_score))) + 
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = round(Percentage, 1)), 
+            vjust = -0.3,                        
+            size = 4) +
+  labs(title = "Percentage distribution of children GDR Scores",
+       x = "Specific GDR score",
+       y = "Percentage (%)", 
+       fill = "Categories") +
+  theme_minimal() + 
+  scale_x_discrete(limits = as.character(seq(6, 18, 1)))   +
+  scale_y_continuous(limits = c(0, 100), breaks = seq(0, 100, 50)) +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    legend.position = "none"
+  ) 
+```
+
+# Adults
+
+## DDS and MDD-W score
+
+The average DDS score out of 10 for adults is: `r round(avg_dds_score, 1)`
+
+The average DDS score out of 10 for youth (18-35 years) is: `r round(mean(Mangwana_baseline_result$adult_dds [Mangwana_baseline_result$age_group == "18 - 35"], na.rm = TRUE),1)`
+
+## DDS per population and subgroups
+
+```{r}
+kable(adult_dds_percentage, caption = "DDS percentage per population")
+```
+
+```{r}
+kable(gender_dds_percentage, caption = "DDS percentage per gender")
+```
+
+```{r}
+gender_youth_dds_percentage <- Mangwana_baseline_result %>%
+  filter(gender != "---", age_group == "18 - 35") %>% #, adult_dss_binary == 1
+  group_by(gender, adult_dss_binary) %>% 
+  summarise(count = n(), .groups = "drop") %>%
+  mutate (percentage = round(count / sum(count)*100))
+kable(gender_youth_dds_percentage, caption = "DDS percentage per gender and youth")
+```
+
+```{r}
+kable(age_dds_percentage, caption = "DDS percentage per age group")
+```
+
+The distribution of the DDS scores out of 10 among adults is:
+
+```{r}
+ggplot(adult_dds_percentage, aes(x= as.factor(adult_dds), y = percentage, fill = as.factor(adult_dds))) + 
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = round(percentage, 1)), 
+            vjust = -0.3,                        
+            size = 4) +
+  labs(title = "Percentage distribution of Adult DDS Scores",
+       x = "DDS scores",
+       y = "Percentage (%)", 
+       fill = "Scores") +
+  theme_minimal() +
+  scale_x_discrete(limits = as.character(seq(0, 10, 1)))   +
+  scale_y_continuous(limits = c(0, 100), breaks = seq(0, 100, 20)) +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    legend.position = "none"
+  )
+```
+
+```{r}
+adult_youth_dds_percentage <- Mangwana_baseline_result %>%
+  filter(age_group == "18 - 35") %>% 
+  group_by(adult_dds) %>% 
+  summarise(count = n()) %>%
+  mutate (percentage = round(count / sum(count)*100))
+
+ggplot(adult_youth_dds_percentage, aes(x= as.factor(adult_dds), y = percentage, fill = as.factor(adult_dds))) + 
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = round(percentage, 1)), 
+            vjust = -0.3,                        
+            size = 4) +
+  labs(title = "Percentage distribution of Adult youth DDS Scores",
+       x = "DDS scores",
+       y = "Percentage (%)", 
+       fill = "Scores") +
+  theme_minimal() +
+  scale_x_discrete(limits = as.character(seq(0, 10, 1)))   +
+  scale_y_continuous(limits = c(0, 100), breaks = seq(0, 100, 20)) +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    legend.position = "none"
+  )
+```
+
+
+The percentage of women of reproductive age (15-49 years) meeting the MDD-W  is: `r female_mddw_age <- sum(
+    Mangwana_baseline_result$gender == "female" &
+    Mangwana_baseline_result$age_mdd_calc == "15 - 49" &
+    Mangwana_baseline_result$adult_dss_binary == 1,
+    na.rm = TRUE
+  )
+  total_rows <- sum(Mangwana_baseline_result$gender == "female" &
+  Mangwana_baseline_result$age_mdd_calc == "15 - 49")
+
+  if (total_rows == 0) {
+    "0 (no data)"
+  } else {
+    paste0(round(100 * (female_mddw_age / total_rows), 1), "%")
+  }`
+  
+Average MDD-W for the women between 15 and 49 is: `r female_mddw_age <- sum(
+    Mangwana_baseline_result$gender == "female" &
+    Mangwana_baseline_result$age_mdd_calc == "15 - 49" &
+    Mangwana_baseline_result$adult_dss_binary == 1,
+    na.rm = TRUE
+  )
+  total_rows <- sum(Mangwana_baseline_result$gender == "female" &
+  Mangwana_baseline_result$age_mdd_calc == "15 - 49")
+  if (total_rows == 0) {
+    "0 (no data)"
+  } else {
+    paste0(round(female_mddw_age / total_rows, 1))
+  }`
+
+The distribution of the MDD-W out of 10 among women of reproductive age (15-49 years) is:
+
+```{r}
+adult_mddw_percentage <- Mangwana_baseline_result %>%
+  filter(gender == "female", age_mdd_calc == "15 - 49") %>% 
+  group_by(adult_dds) %>% 
+  summarise(count = n()) %>%
+  mutate (percentage = round(count / sum(count)*100))
+kable(adult_mddw_percentage, caption = "MDD-W among women of reproductive age (15-49 years) ")
+
+ggplot(adult_mddw_percentage, aes(x= as.factor(adult_dds), y = percentage, fill = as.factor(adult_dds))) + 
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = round(percentage, 1)), 
+            vjust = -0.3,                        
+            size = 4) +
+  labs(title = "Percentage distribution of MDD-W Scores",
+       x = "MDD-W scores",
+       y = "Percentage (%)", 
+       fill = "Scores") +
+  theme_minimal() +
+  scale_x_discrete(limits = as.character(seq(0, 10, 1)))   +
+  scale_y_continuous(limits = c(0, 100), breaks = seq(0, 100, 20)) +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    legend.position = "none"
+  )
+```
+
+```{r}
+adult_mddw_percentage <- Mangwana_baseline_result %>%
+  filter(gender == "female", age_mdd_calc == "15 - 49") %>%
+  select(adult_dds,grains,pulses, nuts, diary, meat_fish, dark_leafy_veg,egg, vitamin_A_veg, vitamin_A_fruit, other_fruit) %>% 
+  pivot_longer(cols = c(grains,pulses, nuts, diary, meat_fish, dark_leafy_veg,egg, vitamin_A_veg, vitamin_A_fruit, other_fruit),
+               names_to = "DSS_Foodgroup",
+               values_to = "Number") %>%
+  filter(Number == 1) 
+food_group_order <- c("grains", "pulses", "nuts", "diary", "meat_fish", 
+                      "dark_leafy_veg", "egg", "vitamin_A_veg", 
+                      "vitamin_A_fruit", "other_fruit")
+  adult_mddw_percentage$DSS_Foodgroup <- factor(
+  adult_mddw_percentage$DSS_Foodgroup,
+  levels = food_group_order
+)
+adult_mddw_percentage <- adult_mddw_percentage %>%
+  group_by(adult_dds, DSS_Foodgroup) %>% 
+  summarise(count = n(), .groups = 'drop') %>% 
+    group_by(adult_dds) %>% 
+    arrange(factor(DSS_Foodgroup, levels = food_group_order)) %>%
+    mutate(percentage = round(count / sum(count) * 100, 1),
+         pos = cumsum(percentage) - (0.5 * percentage)) %>%
+  ungroup()
+kable(adult_mddw_percentage %>% 
+        select(adult_dds, DSS_Foodgroup, count, percentage), 
+      caption = "MDD-W among women of reproductive age (15-49 years)")
+
+ggplot(adult_mddw_percentage, aes(x= as.factor(adult_dds), y = percentage, fill = DSS_Foodgroup)) + 
+  geom_bar(stat = "identity") +
+  # geom_text(aes(y = pos, label = percentage), color = "white", size = 3) +
+  scale_fill_manual(values = c(
+    "grains" = "#E69F00",
+    "pulses" = "#56B4E9",
+    "nuts" = "#009E73",
+    "diary" = "#F0E442",
+    "meat_fish" = "#0072B2",
+    "dark_leafy_veg" = "#D55E00",
+    "egg" = "#CC79A7",
+    "vitamin_A_veg" = "#999999",
+    "vitamin_A_fruit" = "#A65628",
+    "other_fruit" = "#FF69B4"
+  )) +
+  labs(title = "Distribution of MDD-W Scores per food group (%)",
+       x = "MDD-W scores",
+       y = "Percentage (%)", 
+       fill = "Food group") +
+  theme_minimal() +
+  scale_x_discrete(limits = as.character(seq(0, 8, 1)))   +
+  scale_y_continuous(limits = c(0, 105), breaks = seq(0, 100, 10)) +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    legend.position = "right"
+  )
+```
+
+
+## All-5 score
+
+The percentage of the adult population consuming all five recommended food groups the previous day or night: `r paste0(round(100 * sum(Mangwana_baseline_result$adult_all_5_binary == 1) / nrow(Mangwana_baseline_result), 1), "%")`
+
+The average of the adult population consuming all five recommended food groups the previous day or night:`r round(avg_all_5_score, 1)`
+
+The percentage of youth (18-35) consuming all five recommended food groups the previous day or night: `r paste0(round(100 * sum(Mangwana_baseline_result$age_group == "18 - 35" & Mangwana_baseline_result$adult_all_5_binary == 1 ) / sum(Mangwana_baseline_result$adult_all_5_binary), 1), "%")`
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#### Presenting percentages and graph of adult All-5 
+## Calculating the percentage of adult All 5 scores
+adult_all_5_percentage <- Selected_adult_indicators %>%
+  group_by(adult_all_5) %>% 
+  summarise(count = n()) %>%
+  mutate (percentage = round(count / sum(count)*100))
+
+kable(adult_all_5_percentage, caption = "Percentage of adult All 5 scores")
+
+# Graph adult's all 5 categories
+
+ggplot(adult_all_5_percentage, aes(x= as.factor(adult_all_5), y = percentage, fill = as.factor(adult_all_5))) + 
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = round(percentage, 1)), 
+            vjust = -0.3,                        
+            size = 4) +
+  labs(title = "Percentage distribution of All-5 Scores for adult population",
+       x = "All 5 categories",
+       y = "Percentage (%)", 
+       fill = "Categories") +
+  theme_minimal() +
+  scale_y_continuous(limits = c(0, 100), breaks = seq(0, 100, 20)) +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    legend.position = "none"
+  )
+```
+
+### All-5 percentage per gender and age-group
+```{r}
+kable(gender_all5_percentage, caption = "All-5 percentage per gender")
+```
+
+```{r}
+kable(age_all5_percentage, caption = "All-5 percentage per age-group")
+```
+
+```{r}
+all5_percentage_gd_age <- Mangwana_baseline_result %>%
+  filter( adult_all_5_binary ==1) %>% 
+  group_by(gender, age_group, adult_all_5_binary) %>% 
+  summarise(count = n(), .groups = "drop") %>%
+  mutate (percentage = round(count / sum(count)*100))
+
+ggplot(all5_percentage_gd_age, aes(x = age_group, y = percentage, fill = age_group)) +
+  geom_bar(stat = "identity") +
+  facet_wrap(~gender) +
+  labs(
+    title = "Percentage of adults subs consuming All 5 food groups",
+    x = "Age Group",
+    y = "Percentage (%)"
+  ) +
+  theme_minimal() +
+  geom_text(aes(label = paste0(percentage)), vjust = -0.3, size = 3) +
+  guides(fill = "none") +
+  scale_y_continuous(limits = c(0, 100), breaks = seq(0, 100, 20)) +
+
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  )
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#### Presenting percentages and graph of adult consuming specific foods.
+## The percentage of adult consuming a specific food group
+adult_specific_all_5_group <-Selected_adult_indicators %>% 
+  select(carbs,fruit,vegetable, proteins, pulse) %>% 
+  summarise(round(across(everything(),~ mean(.==1) *100))) %>% 
+  pivot_longer(cols = everything(), names_to = "Food Group", values_to = "Percentage")
+kable(adult_specific_all_5_group, caption = "Percentage of adult consuming a specific food group")
+
+## ## Graph for percentage of adult consuming a specific food group
+ggplot(adult_specific_all_5_group, aes(x= reorder(as.factor(`Food Group`), -Percentage), y = Percentage, fill = as.factor(`Food Group`))) + 
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = round(Percentage, 1)), 
+            vjust = -0.3,                        
+            size = 4) +
+  labs(title = "Percentage of adult population",
+       x = "Specific categories for All 5 group",
+       y = "Percentage (%)", 
+       fill = "Categories") +
+  theme_minimal() + 
+  scale_y_continuous(limits = c(0, 100), breaks = seq(0, 100, 20)) +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    legend.position = "none"
+  )
+```
+
+
+```{r}
+adult_gender_specific_all_5_group <-Mangwana_baseline_result %>%
+  group_by(gender, age_group) %>%
+  select(carbs,fruit,vegetable, proteins, pulse) %>% 
+  summarise(round(across(everything(),~ mean(.==1) *100)), .groups = "drop") %>% 
+  pivot_longer(cols = c(carbs, fruit, vegetable, proteins, pulse), names_to = "Food Group", values_to = "Percentage")
+kable(adult_gender_specific_all_5_group, caption = "Percentage of specific group by gender and age")
+
+ggplot(adult_gender_specific_all_5_group, aes(x= reorder(as.factor(`Food Group`), -Percentage), y = Percentage, fill = gender)) + 
+  geom_bar(stat = "identity", position = position_dodge(width = 0.8)) +
+  geom_text(aes(label = round(Percentage, 1)), 
+            position = position_dodge(width = 0.8),
+            vjust = -0.3,                        
+            size = 3) +
+  facet_wrap(~ age_group) +
+  labs(title = "Percentage of adult population",
+       x = "Specific categories for All 5 group",
+       y = "Percentage (%)", 
+       fill = "Categories") +
+  theme_minimal() + 
+  scale_y_continuous(limits = c(0, 100), breaks = seq(0, 100, 10)) +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(), axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+```
+
+## NCD-Protect score
+
+The average NCD-Protect score out of 9 for the adult population is: `r round(avg_ncd_protect_score,1)`
+
+The average NCD-Protect score out of 9 for women is:`r round(mean(Mangwana_baseline_result$adult_ncd_protect[Mangwana_baseline_result$gender == "female"], na.rm = TRUE),1)` 
+
+The percentage of women with NCD protect score of 1 is: `r paste0(round(100 * sum(Mangwana_baseline_result$gender == "female" & Mangwana_baseline_result$adult_ncd_protect_binary == 1 ) / sum(Mangwana_baseline_result$adult_ncd_protect_binary), 1), "%")`
+
+The average NCD-Protect score out of 9 for youth (18-35) is: `r round(mean(Mangwana_baseline_result$adult_ncd_protect[Mangwana_baseline_result$age_group == "18 - 35"], na.rm = TRUE),1)` 
+
+The percentage of youth (18-35) with NCD protect score of 1 is: `r paste0(round(100 * sum(Mangwana_baseline_result$age_group == "18 - 35" & Mangwana_baseline_result$adult_ncd_protect_binary == 1 ) / sum(Mangwana_baseline_result$adult_ncd_protect_binary), 1), "%")`
+
+
+## NCD-Risk score
+
+The average NCD-Risk score out of 9 for the adult population is: `r round(avg_ncd_risk_score,1)`
+
+The average NCD-Risk score out of 9 for women is:`r round(mean(Mangwana_baseline_result$adult_ncd_risk[Mangwana_baseline_result$gender == "female"], na.rm = TRUE),1)` 
+
+The percentage of women with NCD-Risk score of 1 is: `r paste0(round(100 * sum(Mangwana_baseline_result$gender == "female" & Mangwana_baseline_result$adult_ncd_risk_binary == 1 ) / sum(Mangwana_baseline_result$adult_ncd_risk_binary), 1), "%")`
+
+The average NCD-Risk score out of 9 for youth (18-35) is: `r round(mean(Mangwana_baseline_result$adult_ncd_risk[Mangwana_baseline_result$age_group == "18 - 35"], na.rm = TRUE),1)` 
+The percentage of youth (18-35) with NCD-Risk score of 1 is: `r paste0(round(100 * sum(Mangwana_baseline_result$age_group == "18 - 35" & Mangwana_baseline_result$adult_ncd_risk_binary == 1 ) / sum(Mangwana_baseline_result$adult_ncd_risk_binary), 1), "%")`
+
+
+## GDR score
+
+The average GDR score out of 18 for the adult population is: `r round(avg_gdr_score,1)`
+
+The average GDR score out of 9 for women is:`r round(mean(Mangwana_baseline_result$adult_gdr_score[Mangwana_baseline_result$gender == "female"], na.rm = TRUE),1)` 
+
+The average GDR score out of 9 for youth (18-35) is: `r round(mean(Mangwana_baseline_result$adult_gdr_score[Mangwana_baseline_result$age_group == "18 - 35"], na.rm = TRUE),1)` 
+
+The distribution of the GDR score out of 18 for adults is:
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#### Presenting percentages and graph of adult GDR score.  
+### Graphing the GDR score
+  ## Percentage of adult GDR score 
+## Note: I did not round the figures to prevent 0 for some categories. If needed, I can round the figures to a whole number
+  
+## Percentage of adult GDR score
+
+adult_gdr_percentage <- Selected_adult_indicators %>% 
+  group_by(adult_gdr_score) %>% 
+  summarise(Count = n()) %>% 
+  mutate(Percentage = round((Count / sum(Count)) * 100))
+
+### Graphing the GDR score
+ggplot(adult_gdr_percentage, aes(x= as.factor(adult_gdr_score), y = Percentage, fill = as.factor(adult_gdr_score))) + 
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = round(Percentage, 1)), 
+            vjust = -0.3,                        
+            size = 4) +
+  labs(title = "Percentage distribution of GDR Scores",
+       x = "Specific GDR score",
+       y = "Percentage (%)", 
+       fill = "Categories") +
+  theme_minimal() + 
+    scale_x_discrete(limits = as.character(seq(0, 18, 1)))   +
+  scale_y_continuous(limits = c(0, 100), breaks = seq(0, 100, 20)) +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    legend.position = "none"
+  )   
+```
+
+Distribution of adult GDR score per gender: 
+```{r}
+kable(gender_adult_gdr_percentage, caption = "Percentage of GDR score per gender")
+
+## Graph for GDR score per gender
+
+
+ggplot(gender_adult_gdr_percentage, aes(x = factor(adult_gdr_score), y = Percentage, fill = gender)) +
+  geom_bar(stat = "identity", 
+           #position = position_dodge(width = 0.8), 
+           width = 0.7) +  
+  geom_text(aes(label = round(Percentage, 1)),
+            vjust = -0.3,
+            size = 2,
+            position = position_stack(vjust = 0.5)) +
+  labs(
+    title = "Percentage of GDR score by gender",
+    x = "GDR Score",
+    y = "Percentage (%)",
+    fill = "Categories"
+  ) +
+  theme_minimal() +
+  scale_x_discrete(limits = as.character(seq(6, 18, 1))) +
+  scale_y_continuous(limits = c(0, 100), breaks = seq(0, 50, 5)) +
+  guides(fill = guide_legend(title = "Categories")) +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.text.x = element_text(size = 10),
+    legend.title = element_text(size = 10),
+    legend.text = element_text(size = 9)
+  )
+
+
+```
+
+Distribution of adult GDR score per youth:
+```{r}
+kable(age_adult_gdr_percentage, caption = "Percentage of GDR score per age group")
+
+## Graph for GDR score per gender
+
+ggplot(age_adult_gdr_percentage, aes(x = factor(adult_gdr_score), y = Percentage, fill = age_group)) +
+  geom_bar(stat = "identity" , width = 0.8) + # position = position_dodge(width = 1),
+  labs(
+    title = "Percentage of GDR score by age group",
+    x = "GDR Score",
+    y = "Percentage (%)",
+    fill = "Categories"
+  ) +
+  theme_minimal() +
+  geom_text(aes(label = paste0(Percentage)), vjust = -0.3, size = 2, position = position_stack(vjust = 0.5)) +
+  guides(fill = guide_legend(title = "Categories")) +
+  scale_x_discrete(limits = as.character(seq(6, 18, 1))) +
+  scale_y_continuous(limits = c(0, 100), breaks = seq(0, 50, 5)) +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  )
+
+
+
+```
+
+
+# Number of people whose nutritional situation became more resilient to shocks
+
+## MAHFP score
+
+The average MAHFP score for the total population is:  `r Average_MAHFP`
+
+The target average MAHFP score for follow up is: `r mean_top_third`
+
+```{r echo=FALSE}
+ggplot(MAHFP_months, aes(x = months, y = n, fill = months)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = n), vjust = -0.3, size = 3.5) +
+  labs(
+    title = "Frequency of months with missed foods",
+    x = "Month",
+    y = "Number"
+  ) +
+  theme_minimal() +
+  scale_y_continuous(limits = c(0, 140), breaks = seq(0, 140, 20)) +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.text.x = element_blank(),
+    legend.title = element_text(size = 10),
+    legend.text = element_text(size = 9)
+  )
+```
+
+
+## HHS score
+
+The median HHS score for the total population is: `r Median_hhs_score`
+
+The distribution of the HHS score for the total population is:  
+```{r}
+kable(HHS_percentage, caption = "Percentage of HHS scores")
+
+ggplot(HHS_percentage, aes(x = hunger_scores, y = Percentage, fill = hunger_scores)) +
+  geom_bar(stat = "identity", width = 0.8) +
+  labs(
+    title = "Percentage of HHS score",
+    x = "HHS Score",
+    y = "Percentage (%)",
+    fill = "Categories"
+  ) +
+  theme_minimal() +
+  geom_text(aes(label = paste0(Percentage)), vjust = -0.3, size = 5) +
+  guides(fill = guide_legend(title = "Categories")) +
+
+  scale_y_continuous(limits = c(0, 100), breaks = seq(0, 100, 20)) +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.text.x = element_text(angle = 25, vjust = 1, hjust = 0.5)
+  )
+
+```
+
+
+# Number of SSFPs who doubled productivity
+
+The average productivity (income/ # of working days) per household is: `r format(round(mean(Mangwana_baseline_result$total_productivity, na.rm = TRUE), 1), scientific = FALSE)`
+
+
+# Number of SSFP who progressively decrease the yield gap 
+
+The average yield (kg/hectare) per household for the dry season is: `r round(mean(Mangwana_baseline_result$crop_yield, na.rm = TRUE),1)`
+
+The average yield (kg/hectare) per household for the rainy season is:`r round(mean(Mangwana_baseline_result$rainy_crop_yield, na.rm = TRUE),1)`
+
+# Income
+
+## PPP per day for each household
+
+Average PPP gross income for per day the population is: `r round(mean(Mangwana_baseline_result$PPP_per_day),1)`
+
+## Agriculture
+
+### Baseline dry season crops
+
+The average income per household for dry season crops is: `r format(round(mean(Mangwana_baseline_result$crops_income, na.rm = TRUE), 1), scientific = FALSE)`
+
+The standard deviation of income per household for dry season crops is: `r format(round(sd(Mangwana_baseline_result$crops_income, na.rm = TRUE), 1), scientific = FALSE)`
+
+The average gross income per household for dry season crops is: `r format(round(mean(Mangwana_baseline_result$gross_agric_income, na.rm = TRUE), 1), scientific = FALSE)`
+
+The standard deviation of the gross income per household for dry season crops is: `r format(round(sd(Mangwana_baseline_result$gross_agric_income, na.rm = TRUE), 1), scientific = FALSE)`
+
+### Baseline rainy season crops
+
+The average income per household for rainy season crops is: `r format(round(mean(Mangwana_baseline_result$rainy_crops_income, na.rm = TRUE), 1), scientific = FALSE)`
+
+The standard deviation of income per household for rainy season crops is: `r format(round(sd(Mangwana_baseline_result$rainy_crops_income, na.rm = TRUE), 1), scientific = FALSE)`
+
+The average gross income per household for rainy season crops is: `r format(round(mean(Mangwana_baseline_result$rainy_gross_agric_income, na.rm = TRUE), 1), scientific = FALSE)`
+
+The standard deviation of the gross income per household for rainy season crops is: `r format(round(sd(Mangwana_baseline_result$rainy_gross_agric_income, na.rm = TRUE), 1), scientific = FALSE)`
+
+The average agriculture income for both dry and rainy season is: `r format(round(mean(Mangwana_baseline_result$total_agric_income, na.rm = TRUE), 1), scientific = FALSE)`
+
+The standard deviation of agriculture income for both dry and rainy season is: `r format(round(sd(Mangwana_baseline_result$total_agric_income, na.rm = TRUE), 1), scientific = FALSE)`
+
+## Agroforestry
+
+The average gross income for agroforestry is: `r round(mean(Mangwana_baseline_result$forest_gross_income, na.rm = TRUE),1)`
+
+The standard deviation of gross income for agroforestry is: `r round(sd(Mangwana_baseline_result$forest_gross_income, na.rm = TRUE),1)`
+
+## Livestock
+
+The average gross income for livestock is: `r round(mean(Mangwana_baseline_result$gross_livestock_income, na.rm = TRUE),1)`
+
+The standard deviation of gross income for livestock is: `r round(sd(Mangwana_baseline_result$gross_livestock_income, na.rm = TRUE),1)`
+
+## Fish farming
+
+The average gross income for fish farming is: `r round(mean(Mangwana_baseline_result$fish_gross_income, na.rm = TRUE),1)`
+
+The standard deviation of gross income for fish farming is: `r round(sd(Mangwana_baseline_result$fish_gross_income, na.rm = TRUE),1)`
+
+
+# Number of female SSFP who progressively become more empowered
+
+The number of women who make adequate decisions on input within the population is: `r sum(Mangwana_baseline_result$gender == "female" & Mangwana_baseline_result$input_adequacy_binary == 1 )`
+
+The number of women who make adequate decisions on income within the population is: `r sum(Mangwana_baseline_result$gender == "female" & Mangwana_baseline_result$income_adequacy_binary == 1)`
+
+# Number of SSFP whose livelihoods became more resilient to shocks
+
+The number of people with adequate level of resilience to shock in the population is: `r sum(Mangwana_baseline_result$resilience)`
